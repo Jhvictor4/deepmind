@@ -126,7 +126,7 @@ class SafeNavAgent(Agent):
     @function_tool
     async def take_screenshot(self, context: RunContext):
         """Capture the current browser tab screenshot to see what the user sees."""
-        room = context.session.room
+        room = get_job_context().room
         return await _send_tool_request(room, "takeScreenshot", {})
 
     @function_tool
@@ -137,7 +137,7 @@ class SafeNavAgent(Agent):
             x: X coordinate
             y: Y coordinate
         """
-        room = context.session.room
+        room = get_job_context().room
         return await _send_tool_request(room, "clickElement", {"x": x, "y": y})
 
     @function_tool
@@ -147,7 +147,7 @@ class SafeNavAgent(Agent):
         Args:
             text: Text to type
         """
-        room = context.session.room
+        room = get_job_context().room
         return await _send_tool_request(room, "typeText", {"text": text})
 
     @function_tool
@@ -160,7 +160,7 @@ class SafeNavAgent(Agent):
             direction: Scroll direction, either 'up' or 'down'
             amount: Pixels to scroll, default 300
         """
-        room = context.session.room
+        room = get_job_context().room
         return await _send_tool_request(
             room, "scrollPage", {"direction": direction, "amount": amount}
         )
@@ -172,7 +172,7 @@ class SafeNavAgent(Agent):
         Args:
             url: URL to navigate to
         """
-        room = context.session.room
+        room = get_job_context().room
         return await _send_tool_request(room, "navigateTo", {"url": url})
 
 
