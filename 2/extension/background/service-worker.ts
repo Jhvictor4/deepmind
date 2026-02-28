@@ -13,10 +13,6 @@ const session: SessionState = {
   tabId: null,
 };
 
-const LIVEKIT_URL = 'wss://joey-oyxfplv7.livekit.cloud';
-const TOKEN_ENDPOINT = 'http://localhost:8081/token';
-const ROOM_NAME = 'safenav';
-
 let offscreenReady = false;
 
 // ── Message Handler ──
@@ -30,7 +26,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'OFFSCREEN_DISCONNECTED') {
-    console.log('[SafeNav BG] Offscreen reports LiveKit disconnected');
+    console.log('[SafeNav BG] Offscreen reports WebSocket disconnected');
     if (session.active) {
       stopSession();
     }
@@ -78,31 +74,19 @@ async function startSession(tabId: number | null): Promise<{ ok: boolean; error?
   sendToTab(tabId, { type: 'STATUS_UPDATE', status: 'connecting' });
 
   try {
-    // 1. Fetch LiveKit token with explicit room name
-    const token = await fetchLivekitToken();
+    // 1. Get tab capture stream ID
+    const streamId = await getTabCaptureStreamId(tabId);
 
-    // 2. Try tab capture (may fail if extension wasn't invoked via action click)
-    let streamId: string | null = null;
-    try {
-      streamId = await getTabCaptureStreamId(tabId);
-    } catch (captureErr) {
-      console.warn('[SafeNav BG] Tab capture unavailable, starting without screen share:', captureErr);
-    }
-
-    // 3. Create offscreen document and start LiveKit there
+    // 2. Create offscreen document and start WebSocket + capture there
     await ensureOffscreenDocument();
 
-    const resp = await sendToOffscreen('OFFSCREEN_START', {
-      streamId,
-      livekitUrl: LIVEKIT_URL,
-      token,
-    });
+    const resp = await sendToOffscreen('OFFSCREEN_START', { streamId });
 
     if (!resp?.ok) {
       throw new Error(resp?.error || 'Offscreen failed to start');
     }
 
-    console.log(`[SafeNav BG] Session started${streamId ? ' — with screen share' : ' — voice only'}`);
+    console.log('[SafeNav BG] Session started — WebSocket + screen capture via offscreen');
 
     sendToTab(tabId, { type: 'SESSION_STARTED' });
     sendToTab(tabId, { type: 'STATUS_UPDATE', status: 'active' });
@@ -125,7 +109,7 @@ async function startSession(tabId: number | null): Promise<{ ok: boolean; error?
 async function stopSession(): Promise<{ ok: boolean }> {
   const { tabId } = session;
 
-  // Stop offscreen LiveKit
+  // Stop offscreen WebSocket + capture
   await sendToOffscreen('OFFSCREEN_STOP', {});
 
   // Close offscreen document
@@ -187,7 +171,7 @@ async function ensureOffscreenDocument(): Promise<void> {
   await chrome.offscreen.createDocument({
     url: 'offscreen/offscreen.html',
     reasons: [chrome.offscreen.Reason.USER_MEDIA],
-    justification: 'Tab capture for screen sharing via LiveKit',
+    justification: 'Tab capture for screen sharing via WebSocket',
   });
 
   offscreenReady = true;
@@ -222,27 +206,6 @@ function handleDataFromAgent(msg: DataChannelMessage): void {
       });
     }
   }
-}
-
-// ── LiveKit Token ──
-
-async function fetchLivekitToken(): Promise<string> {
-  const resp = await fetch(TOKEN_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identity: 'safenav-extension',
-      name: 'SafeNav Browser',
-      room: ROOM_NAME,
-    }),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`Token endpoint returned ${resp.status}: ${await resp.text()}`);
-  }
-
-  const data = await resp.json();
-  return data.token;
 }
 
 // ── Helpers ──

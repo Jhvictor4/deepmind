@@ -1,18 +1,26 @@
+/// <reference types="chrome" />
 /**
  * SafeNav Offscreen Document
  *
  * Runs in an offscreen document context (has DOM APIs, unlike service worker).
  * Responsibilities:
- * 1. Connect to LiveKit room
+ * 1. Connect to Python agent via WebSocket (ws://localhost:8765)
  * 2. Capture tab via chrome.tabCapture streamId → MediaStream
- * 3. Publish video track (screen share) to LiveKit room
- * 4. Relay data channel messages (tool requests/responses) via chrome.runtime
+ * 3. Periodically send JPEG frames to agent via WebSocket
+ * 4. Relay tool requests/responses between agent and content script via chrome.runtime
  */
 
-import { Room, RoomEvent, Track, LocalVideoTrack, createLocalVideoTrack } from 'livekit-client';
 import type { DataChannelMessage } from '../types';
 
-let livekitRoom: Room | null = null;
+const WS_URL = 'ws://localhost:8765';
+const FRAME_INTERVAL_MS = 2000; // send a screen frame every 2 seconds
+
+let ws: WebSocket | null = null;
+let captureStream: MediaStream | null = null;
+let frameTimer: ReturnType<typeof setInterval> | null = null;
+let videoEl: HTMLVideoElement | null = null;
+let canvas: HTMLCanvasElement | null = null;
+let ctx: CanvasRenderingContext2D | null = null;
 
 // ── Message Handler (from service worker) ──
 
@@ -21,99 +29,151 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   switch (message.type) {
     case 'OFFSCREEN_START': {
-      const { streamId, livekitUrl, token } = message;
-      startLiveKit(livekitUrl, token, streamId)
+      const { streamId } = message;
+      startConnection(streamId)
         .then(() => sendResponse({ ok: true }))
         .catch((err) => sendResponse({ ok: false, error: String(err) }));
       return true; // async
     }
 
     case 'OFFSCREEN_STOP': {
-      stopLiveKit();
+      stopConnection();
       sendResponse({ ok: true });
       return false;
     }
 
     case 'OFFSCREEN_SEND_DATA': {
-      // Forward data channel message to LiveKit (tool response from content script)
-      sendDataToRoom(message.data);
+      // Forward tool response from content script to agent via WebSocket
+      sendToAgent(message.data);
       sendResponse({ ok: true });
       return false;
     }
   }
 });
 
-// ── LiveKit Connection + Tab Capture ──
+// ── WebSocket + Tab Capture ──
 
-async function startLiveKit(url: string, token: string, streamId: string | null): Promise<void> {
-  // 1. Connect to LiveKit room first
-  livekitRoom = new Room();
-
-  // Listen for data channel messages from agent
-  livekitRoom.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
-    try {
-      const text = new TextDecoder().decode(payload);
-      const msg: DataChannelMessage = JSON.parse(text);
-
-      // Relay to service worker → content script
-      chrome.runtime.sendMessage({
-        type: 'DATA_FROM_AGENT',
-        data: msg,
-      });
-    } catch (err) {
-      console.error('[SafeNav Offscreen] Failed to parse data:', err);
-    }
-  });
-
-  livekitRoom.on(RoomEvent.Disconnected, () => {
-    console.log('[SafeNav Offscreen] LiveKit disconnected');
-    chrome.runtime.sendMessage({ type: 'OFFSCREEN_DISCONNECTED' });
-  });
-
-  await livekitRoom.connect(url, token);
-  console.log('[SafeNav Offscreen] Connected to room:', livekitRoom.name);
-
-  // 2. Publish tab capture video track if streamId is available
-  if (streamId) {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        // @ts-expect-error — mandatory constraint for tabCapture streamId
-        mandatory: {
-          chromeMediaSource: 'tab',
-          chromeMediaSourceId: streamId,
-        },
+async function startConnection(streamId: string): Promise<void> {
+  // 1. Get MediaStream from tabCapture streamId
+  captureStream = await navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      // @ts-expect-error — mandatory constraint for tabCapture streamId
+      mandatory: {
+        chromeMediaSource: 'tab',
+        chromeMediaSourceId: streamId,
       },
-    });
+    },
+  });
 
-    const videoTrack = stream.getVideoTracks()[0];
-    if (videoTrack) {
-      const localTrack = new LocalVideoTrack(videoTrack);
-      await livekitRoom.localParticipant.publishTrack(localTrack, {
-        name: 'screen-share',
-        source: Track.Source.ScreenShare,
-      });
-      console.log('[SafeNav Offscreen] Screen share track published');
-    }
-  } else {
-    console.log('[SafeNav Offscreen] No streamId — voice-only mode');
+  const videoTrack = captureStream.getVideoTracks()[0];
+  if (!videoTrack) {
+    throw new Error('No video track from tab capture');
   }
+
+  console.log('[SafeNav Offscreen] Tab capture video track obtained');
+
+  // Set up hidden video + canvas for JPEG frame capture
+  videoEl = document.createElement('video');
+  videoEl.srcObject = new MediaStream([videoTrack]);
+  videoEl.muted = true;
+  videoEl.play();
+
+  canvas = document.createElement('canvas');
+  ctx = canvas.getContext('2d');
+
+  // 2. Connect to agent via WebSocket
+  await connectWebSocket();
+
+  // 3. Start periodic frame capture
+  frameTimer = setInterval(() => captureAndSendFrame(), FRAME_INTERVAL_MS);
 }
 
-function stopLiveKit(): void {
-  if (livekitRoom) {
-    livekitRoom.disconnect();
-    livekitRoom = null;
+function connectWebSocket(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      console.log('[SafeNav Offscreen] WebSocket connected to agent');
+      resolve();
+    };
+
+    ws.onerror = (e) => {
+      console.error('[SafeNav Offscreen] WebSocket error:', e);
+      reject(new Error('WebSocket connection failed'));
+    };
+
+    ws.onclose = () => {
+      console.log('[SafeNav Offscreen] WebSocket closed');
+      chrome.runtime.sendMessage({ type: 'OFFSCREEN_DISCONNECTED' });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg: DataChannelMessage = JSON.parse(event.data);
+        // Relay tool requests from agent to service worker → content script
+        chrome.runtime.sendMessage({
+          type: 'DATA_FROM_AGENT',
+          data: msg,
+        });
+      } catch (err) {
+        console.error('[SafeNav Offscreen] Failed to parse message:', err);
+      }
+    };
+  });
+}
+
+function stopConnection(): void {
+  if (frameTimer) {
+    clearInterval(frameTimer);
+    frameTimer = null;
   }
+
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
+  if (captureStream) {
+    captureStream.getTracks().forEach((t) => t.stop());
+    captureStream = null;
+  }
+
+  videoEl = null;
+  canvas = null;
+  ctx = null;
+
   console.log('[SafeNav Offscreen] Stopped');
 }
 
-function sendDataToRoom(msg: DataChannelMessage): void {
-  if (!livekitRoom) {
-    console.warn('[SafeNav Offscreen] No room — cannot send data');
+// ── Frame Capture ──
+
+function captureAndSendFrame(): void {
+  if (!videoEl || !canvas || !ctx || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  // Match video dimensions
+  canvas.width = videoEl.videoWidth || 1280;
+  canvas.height = videoEl.videoHeight || 720;
+
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+  // Convert to JPEG base64
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  const base64 = dataUrl.split(',')[1]; // strip "data:image/jpeg;base64,"
+
+  ws.send(JSON.stringify({
+    type: 'screen_frame',
+    data: base64,
+  }));
+}
+
+// ── Send data to agent via WebSocket ──
+
+function sendToAgent(msg: DataChannelMessage): void {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn('[SafeNav Offscreen] WebSocket not open — cannot send data');
     return;
   }
 
-  const encoded = new TextEncoder().encode(JSON.stringify(msg));
-  livekitRoom.localParticipant.publishData(encoded, { reliable: true });
+  ws.send(JSON.stringify(msg));
 }
