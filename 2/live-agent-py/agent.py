@@ -108,6 +108,11 @@ class SafeNavAgent(Agent):
             logger.info("Attaching screen frame to user message")
             new_message.content.append(ImageContent(image=self._latest_frame))
             self._latest_frame = None
+        else:
+            new_message.content.append(
+                "[SYSTEM: 현재 화면 공유가 연결되지 않았습니다. 스크린을 볼 수 없습니다. "
+                "절대로 화면이 보인다고 말하지 마세요.]"
+            )
 
     def _create_video_stream(self, track: rtc.Track) -> None:
         if self._video_stream is not None:
