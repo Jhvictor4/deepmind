@@ -40,16 +40,17 @@ const server = createServer(async (req, res) => {
     }
 
     try {
-      const { identity, name } = JSON.parse(body);
+      const { identity, name, room } = JSON.parse(body);
+      const roomName = room || 'safenav';
 
       const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
         identity: identity || 'safenav-extension',
         name: name || 'SafeNav Browser',
       });
 
-      // Grant permissions: join room, publish tracks, subscribe to data
+      // Grant permissions: join specific room, publish tracks, subscribe to data
       token.addGrant({
-        room: '*',          // allow joining any room (the agent creates the room)
+        room: roomName,
         roomJoin: true,
         canPublish: true,   // extension needs to publish screen share
         canSubscribe: true, // extension needs to receive data channel messages
@@ -61,7 +62,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ token: jwt }));
 
-      console.log(`🎫 Token issued for identity="${identity || 'safenav-extension'}"`);
+      console.log(`🎫 Token issued for identity="${identity || 'safenav-extension'}" room="${roomName}"`);
     } catch (err) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: String(err) }));
