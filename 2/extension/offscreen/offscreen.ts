@@ -10,7 +10,7 @@
  * 4. Relay tool requests/responses between agent and content script via chrome.runtime
  */
 
-import type { DataChannelMessage } from '../types';
+import type { AudioInMessage, DataChannelMessage } from '../types';
 
 const WS_URL = 'ws://localhost:8765';
 const FRAME_INTERVAL_MS = 2000; // send a screen frame every 2 seconds
@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case 'OFFSCREEN_SEND_DATA': {
-      // Forward tool response from content script to agent via WebSocket
+      // Forward tool responses / audio chunks from extension to agent via WebSocket
       sendToAgent(message.data);
       sendResponse({ ok: true });
       return false;
@@ -111,7 +111,15 @@ function connectWebSocket(): Promise<void> {
     ws.onmessage = (event) => {
       try {
         const msg: DataChannelMessage = JSON.parse(event.data);
-        // Relay tool requests from agent to service worker → content script
+        // Relay tool requests and audio output from agent.
+        if (msg.type === 'audio_out') {
+          chrome.runtime.sendMessage({
+            type: 'PLAY_AUDIO_TO_TAB',
+            data: msg.data,
+          });
+          return;
+        }
+
         chrome.runtime.sendMessage({
           type: 'DATA_FROM_AGENT',
           data: msg,
@@ -169,7 +177,7 @@ function captureAndSendFrame(): void {
 
 // ── Send data to agent via WebSocket ──
 
-function sendToAgent(msg: DataChannelMessage): void {
+function sendToAgent(msg: DataChannelMessage | AudioInMessage): void {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     console.warn('[SafeNav Offscreen] WebSocket not open — cannot send data');
     return;

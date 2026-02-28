@@ -1,5 +1,6 @@
 """SafeNav – Google GenAI Live API + WebSocket bridge for Chrome extension."""
 
+import argparse
 import asyncio
 import base64
 import io
@@ -7,12 +8,17 @@ import json
 import logging
 import os
 import uuid
+from typing import Any
 
-import pyaudio
 import websockets
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+try:
+    import pyaudio
+except ImportError:
+    pyaudio = None
 
 load_dotenv(dotenv_path=".env.local")
 
@@ -24,7 +30,7 @@ logging.basicConfig(
 
 # ── Audio config ──
 
-FORMAT = pyaudio.paInt16
+FORMAT = pyaudio.paInt16 if pyaudio else None
 CHANNELS = 1
 SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
@@ -146,6 +152,17 @@ CONFIG = types.LiveConnectConfig(
     tools=TOOLS,
 )
 
+# ── Runtime mode / tool name mapping ──
+
+DEFAULT_AUDIO_MODE = os.getenv("SAFENAV_AUDIO_MODE", "tui").lower()
+TOOL_NAME_MAP = {
+    "take_screenshot": "takeScreenshot",
+    "click_element": "clickElement",
+    "type_text": "typeText",
+    "scroll_page": "scrollPage",
+    "navigate_to": "navigateTo",
+}
+
 
 # ── WebSocket bridge for Chrome extension ──
 
@@ -158,6 +175,7 @@ class ExtensionBridge:
         self._connected = asyncio.Event()
         self._gemini_session = None  # set after Live API connects
         self._screen_task: asyncio.Task | None = None
+        self._audio_in_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
 
     @property
     def connected(self) -> bool:
@@ -165,6 +183,9 @@ class ExtensionBridge:
 
     def set_gemini_session(self, session) -> None:
         self._gemini_session = session
+
+    async def wait_until_connected(self) -> None:
+        await self._connected.wait()
 
     # ── WebSocket server handler ──
 
@@ -216,6 +237,17 @@ class ExtensionBridge:
                 )
                 logger.debug("Forwarded screen frame from extension to Gemini")
 
+        elif msg_type == "audio_in":
+            # Extension sends user mic audio (base64 PCM 16kHz s16le)
+            if msg.get("data"):
+                pcm_bytes = base64.b64decode(msg["data"])
+                if self._audio_in_queue.full():
+                    try:
+                        self._audio_in_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        pass
+                self._audio_in_queue.put_nowait(pcm_bytes)
+
     # ── Notify Gemini about connection state changes ──
 
     async def _notify_model(self, text: str) -> None:
@@ -238,6 +270,7 @@ class ExtensionBridge:
         if not self._ws:
             return {"error": "Chrome extension not connected"}
 
+        mapped_name = TOOL_NAME_MAP.get(name, name)
         request_id = str(uuid.uuid4())
         fut: asyncio.Future = asyncio.get_event_loop().create_future()
         self._pending[request_id] = fut
@@ -245,10 +278,10 @@ class ExtensionBridge:
         await self._ws.send(json.dumps({
             "type": "tool_request",
             "id": request_id,
-            "tool": name,
+            "tool": mapped_name,
             "params": params,
         }))
-        logger.info(f"→ Extension: {name}({params})")
+        logger.info(f"→ Extension: {name} -> {mapped_name}({params})")
 
         try:
             result = await asyncio.wait_for(fut, timeout=timeout)
@@ -258,6 +291,17 @@ class ExtensionBridge:
 
         logger.info(f"← Extension: {result}")
         return result
+
+    async def recv_extension_audio(self) -> bytes:
+        return await self._audio_in_queue.get()
+
+    async def send_audio_out(self, pcm_bytes: bytes) -> None:
+        if not self._ws:
+            return
+        await self._ws.send(json.dumps({
+            "type": "audio_out",
+            "data": base64.b64encode(pcm_bytes).decode("ascii"),
+        }))
 
 
 bridge = ExtensionBridge()
@@ -269,7 +313,7 @@ audio_out_queue: asyncio.Queue[bytes] = asyncio.Queue()
 
 # ── Coroutines ──
 
-async def listen_mic(pya: pyaudio.PyAudio, mic_queue: asyncio.Queue) -> None:
+async def listen_mic(pya: Any, mic_queue: asyncio.Queue) -> None:
     """Capture microphone audio and push PCM chunks to queue."""
     mic_info = pya.get_default_input_device_info()
     stream = await asyncio.to_thread(
@@ -295,6 +339,15 @@ async def send_audio(session, mic_queue: asyncio.Queue) -> None:
     """Forward mic audio to the Live API session."""
     while True:
         data = await mic_queue.get()
+        await session.send_realtime_input(
+            audio=types.Blob(data=data, mime_type="audio/pcm")
+        )
+
+
+async def send_extension_audio(session) -> None:
+    """Forward extension mic audio to the Live API session."""
+    while True:
+        data = await bridge.recv_extension_audio()
         await session.send_realtime_input(
             audio=types.Blob(data=data, mime_type="audio/pcm")
         )
@@ -354,7 +407,7 @@ async def receive_responses(session) -> None:
                 )
 
 
-async def play_audio(pya: pyaudio.PyAudio) -> None:
+async def play_audio(pya: Any) -> None:
     """Play received audio through speakers."""
     stream = await asyncio.to_thread(
         pya.open,
@@ -369,6 +422,13 @@ async def play_audio(pya: pyaudio.PyAudio) -> None:
             await asyncio.to_thread(stream.write, data)
     finally:
         stream.close()
+
+
+async def send_audio_to_extension() -> None:
+    """Send model audio chunks to the extension for browser playback."""
+    while True:
+        data = await audio_out_queue.get()
+        await bridge.send_audio_out(data)
 
 
 async def send_initial_greeting(session) -> None:
@@ -406,27 +466,43 @@ WS_HOST = "localhost"
 WS_PORT = 8765
 
 
-async def main() -> None:
+async def main(audio_mode: str) -> None:
+    if audio_mode not in {"tui", "extension"}:
+        raise ValueError(f"Unsupported mode '{audio_mode}'. Use 'tui' or 'extension'.")
+
+    if audio_mode == "tui" and pyaudio is None:
+        raise RuntimeError("pyaudio is required for tui mode but is not installed.")
+
     client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-    pya = pyaudio.PyAudio()
+    pya = pyaudio.PyAudio() if audio_mode == "tui" else None
 
     # Start WebSocket server for Chrome extension
     ws_server = await websockets.serve(bridge.handler, WS_HOST, WS_PORT)
     logger.info(f"WebSocket server listening on ws://{WS_HOST}:{WS_PORT}")
-    logger.info("Waiting for Chrome extension to connect…  (you can also talk without it)")
+    logger.info("Waiting for Chrome extension to connect…")
 
     try:
+        if audio_mode == "extension":
+            logger.info("Extension mode: Gemini session will start after WebSocket connects.")
+            await bridge.wait_until_connected()
+            logger.info("WebSocket connected — starting Gemini session.")
+
         async with client.aio.live.connect(model=MODEL, config=CONFIG) as session:
             bridge.set_gemini_session(session)
             logger.info("Connected to Gemini Live API. Start speaking!")
+            logger.info(f"Audio mode: {audio_mode}")
 
             mic_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=5)
 
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(listen_mic(pya, mic_queue))
-                tg.create_task(send_audio(session, mic_queue))
+                if audio_mode == "tui":
+                    tg.create_task(listen_mic(pya, mic_queue))
+                    tg.create_task(send_audio(session, mic_queue))
+                    tg.create_task(play_audio(pya))
+                else:
+                    tg.create_task(send_extension_audio(session))
+                    tg.create_task(send_audio_to_extension())
                 tg.create_task(receive_responses(session))
-                tg.create_task(play_audio(pya))
                 tg.create_task(send_initial_greeting(session))
 
     except asyncio.CancelledError:
@@ -434,12 +510,21 @@ async def main() -> None:
     finally:
         ws_server.close()
         await ws_server.wait_closed()
-        pya.terminate()
+        if pya:
+            pya.terminate()
         logger.info("Session closed.")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--mode",
+            choices=["tui", "extension"],
+            default=DEFAULT_AUDIO_MODE,
+            help="tui: local mic/speaker, extension: browser mic/speaker via websocket",
+        )
+        args = parser.parse_args()
+        asyncio.run(main(args.mode))
     except KeyboardInterrupt:
         print("\nInterrupted by user.")

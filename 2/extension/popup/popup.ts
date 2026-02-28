@@ -5,13 +5,15 @@ if (!(dot instanceof HTMLElement) || !(statusEl instanceof HTMLElement)) {
   throw new Error('Popup elements not found');
 }
 
-// Check if token server is reachable.
-fetch('http://localhost:8081/health')
-  .then((r) => r.json())
-  .then(() => {
-    dot.classList.add('connected');
-    statusEl.textContent = 'Server connected';
-  })
-  .catch(() => {
-    statusEl.textContent = 'Server offline — run pnpm dev:all';
-  });
+// Check if websocket bridge server is reachable.
+const ws = new WebSocket('ws://localhost:8765');
+
+ws.onopen = () => {
+  dot.classList.add('connected');
+  statusEl.textContent = 'Bridge connected (ws://localhost:8765)';
+  ws.close();
+};
+
+ws.onerror = () => {
+  statusEl.textContent = 'Bridge offline — run python live-agent-gemini/agent.py --mode extension';
+};

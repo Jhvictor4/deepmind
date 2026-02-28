@@ -62,7 +62,21 @@ export interface ToolResponse {
   result: string;
 }
 
-export type DataChannelMessage = ToolRequest | ToolResponse;
+export interface AudioInMessage {
+  type: 'audio_in';
+  data: string; // base64 PCM (16kHz mono s16le)
+}
+
+export interface AudioOutMessage {
+  type: 'audio_out';
+  data: string; // base64 PCM (24kHz mono s16le)
+}
+
+export type DataChannelMessage =
+  | ToolRequest
+  | ToolResponse
+  | AudioInMessage
+  | AudioOutMessage;
 
 // Session state managed by the background service worker
 export interface SessionState {

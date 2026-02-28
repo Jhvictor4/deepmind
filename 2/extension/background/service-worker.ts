@@ -25,6 +25,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  if (message.type === 'PLAY_AUDIO_TO_TAB') {
+    if (session.tabId) {
+      sendToTab(session.tabId, { type: 'PLAY_AUDIO', data: String(message.data ?? '') });
+    }
+    sendResponse({ ok: true });
+    return false;
+  }
+
   if (message.type === 'OFFSCREEN_DISCONNECTED') {
     console.log('[SafeNav BG] Offscreen reports WebSocket disconnected');
     if (session.active) {
@@ -48,6 +56,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'TOOL_RESPONSE_FROM_CONTENT':
       // Content script finished a tool — relay to offscreen → agent
       sendToOffscreen('OFFSCREEN_SEND_DATA', { data: msg.response });
+      sendResponse({ ok: true });
+      return false;
+
+    case 'AUDIO_DATA':
+      // Stream user microphone PCM to agent via offscreen WebSocket
+      sendToOffscreen('OFFSCREEN_SEND_DATA', {
+        data: {
+          type: 'audio_in',
+          data: msg.data,
+        },
+      });
       sendResponse({ ok: true });
       return false;
 
