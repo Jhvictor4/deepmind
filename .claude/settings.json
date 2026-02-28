@@ -8,7 +8,10 @@
       "Bash(pnpm rebuild speaker)",
       "Bash(node -e \"const r = require\\(''node-record-lpcm16''\\); console.log\\(Object.keys\\(r\\)\\); console.log\\(typeof r.record\\);\")",
       "Bash(/tmp/gen_icons.py:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "WebFetch(domain:cerebralvalley.ai)",
+      "Bash(pnpm config set onlyBuiltDependencies '[\"\"speaker\"\",\"\"protobufjs\"\"]' --location project)",
+      "Bash(npx node-gyp rebuild)"
     ]
   }
 }

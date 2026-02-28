@@ -9,7 +9,8 @@
  */
 
 import { GoogleGenAI, Modality } from '@google/genai';
-import { record as recordAudio, type Recording } from 'node-record-lpcm16';
+import pkg from 'node-record-lpcm16';
+const { record: recordAudio } = pkg;
 import Speaker from 'speaker';
 import dotenv from 'dotenv';
 import { browserTools, executeBrowserAction } from './tools.js';
@@ -46,18 +47,22 @@ RULES:
 You have access to browser navigation tools. When the user asks for help
 with a website, use your tools to navigate and assist them.`;
 
-// ─── Speaker (24kHz output) ──────────────────────────────────────────────────
-
-const speaker = new Speaker({
-  channels: 1,
-  bitDepth: 16,
-  sampleRate: 24000,
-  signed: true,
-});
-
 // ─── State ───────────────────────────────────────────────────────────────────
 
-let micRecording: Recording | null = null;
+let speaker: InstanceType<typeof Speaker> | null = null;
+let micRecording: ReturnType<typeof recordAudio> | null = null;
+
+function getSpeaker() {
+  if (!speaker) {
+    speaker = new Speaker({
+      channels: 1,
+      bitDepth: 16,
+      sampleRate: 24000,
+      signed: true,
+    });
+  }
+  return speaker;
+}
 
 // ─── Banner ──────────────────────────────────────────────────────────────────
 
@@ -107,7 +112,7 @@ const session = await ai.live.connect({
       if (parts) {
         for (const part of parts) {
           if (part.inlineData?.data) {
-            speaker.write(Buffer.from(part.inlineData.data, 'base64'));
+            getSpeaker().write(Buffer.from(part.inlineData.data, 'base64'));
           }
         }
       }
@@ -189,11 +194,13 @@ function shutdown() {
     console.log('   🎤 마이크 중지');
   }
 
-  try {
-    speaker.end();
-    console.log('   🔇 스피커 중지');
-  } catch {
-    // speaker already closed
+  if (speaker) {
+    try {
+      speaker.end();
+      console.log('   🔇 스피커 중지');
+    } catch {
+      // speaker already closed
+    }
   }
 
   try {
