@@ -8,7 +8,8 @@
     "tabs",
     "scripting",
     "tabCapture",
-    "offscreen"
+    "offscreen",
+    "microphone"
   ],
   "host_permissions": [
     "<all_urls>"
