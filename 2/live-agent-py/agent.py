@@ -194,7 +194,7 @@ async def entrypoint(ctx: JobContext):
         ),
         tts=google.beta.GeminiTTS(
             voice_name="Kore",
-            speech_rate=1.4,
+            instructions="Speak at a fast pace. Be energetic and clear.",
         ),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
