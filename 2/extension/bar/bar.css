@@ -1,0 +1,487 @@
+/* SafeNav Floating FAB + Chat Panel — injected inside Shadow DOM */
+
+:host {
+  /* Design tokens */
+  --sn-bg: #1a1a1a;
+  --sn-bg-panel: #202020;
+  --sn-bg-hover: #2a2a2a;
+  --sn-bg-input: #2c2c2c;
+  --sn-text: #ffffff;
+  --sn-text-secondary: #999999;
+  --sn-accent: #4285f4;
+  --sn-accent-glow: rgba(66, 133, 244, 0.3);
+  --sn-danger: #ea4335;
+  --sn-success: #34a853;
+  --sn-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sn-font-size: 13px;
+  --sn-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --sn-fab-size: 56px;
+  --sn-panel-width: 380px;
+  --sn-panel-max-height: 520px;
+
+  all: initial;
+  display: block;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  font-family: var(--sn-font);
+  font-size: var(--sn-font-size);
+  color: var(--sn-text);
+}
+
+/* ── Widget container ── */
+.sn-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* ── FAB Button ── */
+.sn-fab {
+  width: var(--sn-fab-size);
+  height: var(--sn-fab-size);
+  border-radius: 50%;
+  border: none;
+  background: var(--sn-accent);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: background var(--sn-transition), transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sn-fab:hover {
+  transform: scale(1.05);
+}
+
+.sn-fab:active {
+  transform: scale(0.95);
+}
+
+.sn-fab svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sn-fab-icon-gemini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sn-fab-icon-gemini img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.sn-fab .sn-fab-icon-close {
+  position: absolute;
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+/* FAB icon swap when panel open */
+.sn-widget.panel-open .sn-fab .sn-fab-icon-gemini {
+  opacity: 0;
+  transform: rotate(90deg);
+}
+
+.sn-widget.panel-open .sn-fab .sn-fab-icon-close {
+  opacity: 1;
+  transform: rotate(0deg);
+}
+
+/* FAB state colors */
+.sn-widget.state-connecting .sn-fab {
+  background: #666;
+}
+
+.sn-widget.state-active .sn-fab,
+.sn-widget.state-acting .sn-fab {
+  background: var(--sn-danger);
+}
+
+.sn-widget.state-error .sn-fab {
+  background: var(--sn-danger);
+}
+
+/* Pulse ring animation for active state when panel is closed */
+.sn-fab-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--sn-danger);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sn-widget.state-active:not(.panel-open) .sn-fab-pulse,
+.sn-widget.state-acting:not(.panel-open) .sn-fab-pulse {
+  animation: sn-pulse 1.8s ease-out infinite;
+}
+
+@keyframes sn-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Unread badge */
+.sn-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--sn-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.sn-widget.has-unread .sn-fab-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Hide badge when panel is open */
+.sn-widget.panel-open .sn-fab-badge {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* ── Chat Panel ── */
+.sn-panel {
+  width: var(--sn-panel-width);
+  max-height: var(--sn-panel-max-height);
+  background: var(--sn-bg-panel);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Closed state */
+  opacity: 0;
+  transform: translateY(12px) scale(0.95);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition: opacity var(--sn-transition), transform var(--sn-transition);
+}
+
+.sn-widget.panel-open .sn-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* ── Panel Header ── */
+.sn-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.sn-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sn-logo-icon {
+  width: 18px;
+  height: 18px;
+  background: var(--sn-accent);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.sn-logo-text {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.2px;
+}
+
+.sn-header-status {
+  font-size: 12px;
+  color: var(--sn-text-secondary);
+  flex-shrink: 0;
+}
+
+.sn-header-status.connected {
+  color: var(--sn-danger);
+}
+
+.sn-header-status.connecting {
+  animation: sn-blink 1.2s ease-in-out infinite;
+}
+
+.sn-visualizer-container {
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sn-visualizer-container canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.sn-close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.sn-close-btn:hover {
+  background: var(--sn-bg-hover);
+}
+
+.sn-close-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--sn-text-secondary);
+}
+
+/* ── Messages Area ── */
+.sn-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  max-height: 320px;
+}
+
+.sn-messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sn-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sn-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+/* ── Chat Message ── */
+.sn-message {
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+  animation: sn-msg-in 0.25s ease-out;
+}
+
+.sn-message.agent {
+  align-self: flex-start;
+}
+
+.sn-message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.sn-message-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sn-bubble {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.sn-message.agent .sn-bubble {
+  background: rgba(255, 255, 255, 0.08);
+  border-top-left-radius: 4px;
+}
+
+.sn-message.user .sn-bubble {
+  background: var(--sn-accent);
+  color: #fff;
+  border-top-right-radius: 4px;
+}
+
+@keyframes sn-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Panel Footer ── */
+.sn-panel-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Error text */
+.sn-error-text {
+  color: var(--sn-danger);
+  font-size: 12px;
+  display: none;
+}
+
+.sn-widget.state-error .sn-error-text {
+  display: block;
+}
+
+/* Task progress */
+.sn-task-progress {
+  color: var(--sn-text-secondary);
+  font-size: 11px;
+  display: none;
+}
+
+.sn-widget.state-acting .sn-task-progress {
+  display: block;
+}
+
+/* Input row */
+.sn-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sn-text-input {
+  flex: 1;
+  background: var(--sn-bg-input);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 8px 14px;
+  color: var(--sn-text);
+  font-family: var(--sn-font);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.sn-text-input::placeholder {
+  color: var(--sn-text-secondary);
+}
+
+.sn-text-input:focus {
+  border-color: var(--sn-accent);
+}
+
+.sn-mic-btn-panel {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sn-mic-btn-panel:hover {
+  background: var(--sn-bg-hover);
+}
+
+.sn-mic-btn-panel svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--sn-text-secondary);
+  transition: fill 0.15s;
+}
+
+.sn-widget.state-active .sn-mic-btn-panel svg,
+.sn-widget.state-acting .sn-mic-btn-panel svg {
+  fill: var(--sn-danger);
+}
+
+/* Disconnect button */
+.sn-disconnect-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--sn-text-secondary);
+  font-family: var(--sn-font);
+  font-size: 12px;
+  padding: 6px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  display: none;
+  width: 100%;
+}
+
+.sn-widget.session-active .sn-disconnect-btn {
+  display: block;
+}
+
+.sn-disconnect-btn:hover {
+  border-color: var(--sn-danger);
+  color: var(--sn-danger);
+}
+
+/* ── Utility ── */
+@keyframes sn-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
