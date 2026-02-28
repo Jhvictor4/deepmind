@@ -1,7 +1,13 @@
-import { llm, voice } from '@livekit/agents';
+import { Task, getJobContext, llm, voice } from '@livekit/agents';
+import type { Track, VideoFrame } from '@livekit/rtc-node';
+import { RoomEvent, TrackKind, VideoStream } from '@livekit/rtc-node';
 import { z } from 'zod';
 
 export class Agent extends voice.Agent {
+  private latestFrame: VideoFrame | null = null;
+  private videoStream: VideoStream | null = null;
+  private tasks: Set<Task<void>> = new Set();
+
   constructor() {
     super({
       instructions: `You are SafeNav, a kind and patient AI assistant that helps people navigate difficult websites. You speak to the user via real-time voice.
@@ -15,6 +21,7 @@ RULES:
 - If you're unsure, ask the user rather than guessing
 - Be warm, patient, and encouraging
 - Speak in the user's preferred language
+- When you can see the user's screen, describe what you see and guide them step by step
 
 You have access to browser navigation tools. When the user asks for help with a website, use your tools to navigate and assist them.`,
 
@@ -71,5 +78,67 @@ You have access to browser navigation tools. When the user asks for help with a 
         }),
       },
     });
+  }
+
+  // Subscribe to screen share / video tracks when agent enters the room
+  async onEnter(): Promise<void> {
+    const room = getJobContext().room;
+
+    // Check existing participants for video tracks
+    const remoteParticipants = Array.from(room.remoteParticipants.values());
+    for (const participant of remoteParticipants) {
+      for (const pub of participant.trackPublications.values()) {
+        if (pub.track?.kind === TrackKind.KIND_VIDEO) {
+          console.log(`📺 Found existing video track from ${participant.identity}`);
+          this.createVideoStream(pub.track);
+          break;
+        }
+      }
+    }
+
+    // Watch for new video tracks (screen share)
+    room.on(RoomEvent.TrackSubscribed, (track: Track) => {
+      if (track.kind === TrackKind.KIND_VIDEO) {
+        console.log('📺 Screen share track subscribed');
+        this.createVideoStream(track);
+      }
+    });
+  }
+
+  // Attach latest video frame to each user turn so the model can see the screen
+  async onUserTurnCompleted(
+    chatCtx: llm.ChatContext,
+    newMessage: llm.ChatMessage,
+  ): Promise<void> {
+    if (this.latestFrame) {
+      console.log('🖼️  Attaching screen frame to user message');
+      newMessage.content.push(
+        llm.createImageContent({
+          image: this.latestFrame,
+        }),
+      );
+      this.latestFrame = null;
+    }
+  }
+
+  // Buffer latest video frame from screen share track
+  private createVideoStream(track: Track): void {
+    if (this.videoStream !== null) {
+      this.videoStream.cancel();
+    }
+
+    this.videoStream = new VideoStream(track);
+
+    const readStream = async (controller: AbortController): Promise<void> => {
+      if (!this.videoStream) return;
+      for await (const event of this.videoStream) {
+        if (controller.signal.aborted) return;
+        this.latestFrame = event.frame;
+      }
+    };
+
+    const task = Task.from((controller) => readStream(controller));
+    task.result.finally(() => this.tasks.delete(task));
+    this.tasks.add(task);
   }
 }

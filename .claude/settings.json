@@ -21,7 +21,8 @@
       "Bash(node dist/main.js dev)",
       "Bash(pnpm add @livekit/agents-plugin-google@1.x)",
       "Bash(node -e \"const g = require\\(''@livekit/agents-plugin-google''\\); console.log\\(Object.keys\\(g\\)\\)\")",
-      "Bash(node -e \"const g = require\\(''@livekit/agents-plugin-google''\\); console.log\\(Object.keys\\(g.beta\\)\\); console.log\\(g.beta.realtime ? Object.keys\\(g.beta.realtime\\) : ''no realtime''\\)\")"
+      "Bash(node -e \"const g = require\\(''@livekit/agents-plugin-google''\\); console.log\\(Object.keys\\(g.beta\\)\\); console.log\\(g.beta.realtime ? Object.keys\\(g.beta.realtime\\) : ''no realtime''\\)\")",
+      "Bash(pnpm add @livekit/rtc-node)"
     ]
   }
 }
