@@ -38,6 +38,7 @@ export class SafeNavBar {
 
   private onToggleSession: (() => void) | null = null;
   private onSendText: ((text: string) => void) | null = null;
+  private streamingBubble: { speaker: 'user' | 'agent'; el: HTMLDivElement } | null = null;
 
   constructor(shadow: ShadowRoot) {
     this.shadow = shadow;
@@ -59,7 +60,15 @@ export class SafeNavBar {
     this.updateUI(detail);
   }
 
-  addTranscript(speaker: 'user' | 'agent', text: string): void {
+  addTranscript(speaker: 'user' | 'agent', text: string, delta = false): void {
+    // Delta: append to the current streaming bubble if same speaker
+    if (delta && this.streamingBubble?.speaker === speaker) {
+      this.streamingBubble.el.textContent += text;
+      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+      return;
+    }
+
+    // New bubble
     const msg = document.createElement('div');
     msg.className = `sn-message ${speaker}`;
 
@@ -75,6 +84,9 @@ export class SafeNavBar {
     msg.appendChild(bubble);
     this.messagesEl.appendChild(msg);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+    // Track for subsequent deltas
+    this.streamingBubble = { speaker, el: bubble };
 
     // Update unread badge if panel is closed
     if (!this.panelOpen) {

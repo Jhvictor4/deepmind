@@ -38,7 +38,7 @@ export type Message =
   | { type: 'ACTION_RESULT'; success: boolean; error?: string }
   | { type: 'AUDIO_DATA'; data: string } // base64 PCM
   | { type: 'PLAY_AUDIO'; data: string } // base64 PCM
-  | { type: 'TRANSCRIPTION'; speaker: 'user' | 'agent'; text: string }
+  | { type: 'TRANSCRIPTION'; speaker: 'user' | 'agent'; text: string; delta?: boolean }
   | { type: 'STATUS_UPDATE'; status: BarState; detail?: string }
   | { type: 'HIGHLIGHT_ELEMENT'; selector: string; label?: string }
   | { type: 'CLEAR_HIGHLIGHT' }
@@ -77,6 +77,7 @@ export interface TranscriptionMessage {
   type: 'transcription';
   speaker: 'user' | 'agent';
   text: string;
+  delta?: boolean;
 }
 
 export interface TextInputMessage {

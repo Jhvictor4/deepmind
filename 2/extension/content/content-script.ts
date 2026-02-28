@@ -108,7 +108,7 @@ function handleMessage(message: Message): void {
       break;
 
     case 'TRANSCRIPTION':
-      bar.addTranscript(message.speaker, message.text);
+      bar.addTranscript(message.speaker, message.text, message.delta);
       break;
 
     case 'PLAY_AUDIO':
