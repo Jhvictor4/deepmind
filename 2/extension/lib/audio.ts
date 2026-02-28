@@ -6,7 +6,8 @@
 export class AudioCapture {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
-  private workletNode: AudioWorkletNode | null = null;
+  private processor: ScriptProcessorNode | null = null;
+  private source: MediaStreamAudioSourceNode | null = null;
   private onAudioData: ((base64Pcm: string) => void) | null = null;
 
   /** Start capturing microphone audio at 16kHz mono PCM */
@@ -23,22 +24,29 @@ export class AudioCapture {
     });
 
     this.audioContext = new AudioContext({ sampleRate: 16000 });
-    const source = this.audioContext.createMediaStreamSource(this.stream);
+    this.source = this.audioContext.createMediaStreamSource(this.stream);
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
 
     // Use ScriptProcessorNode as fallback (AudioWorklet requires served files)
-    const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (e) => {
+    this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
+    this.processor.onaudioprocess = (e) => {
       const float32 = e.inputBuffer.getChannelData(0);
       const pcm16 = float32ToInt16(float32);
       const base64 = arrayBufferToBase64(pcm16.buffer as ArrayBuffer);
       this.onAudioData?.(base64);
     };
 
-    source.connect(processor);
-    processor.connect(this.audioContext.destination);
+    this.source.connect(this.processor);
+    this.processor.connect(this.audioContext.destination);
   }
 
   stop(): void {
+    this.processor?.disconnect();
+    this.processor = null;
+    this.source?.disconnect();
+    this.source = null;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.audioContext?.close();
@@ -62,7 +70,14 @@ export class AudioPlayer {
 
   /** Play base64-encoded PCM audio (24kHz, 16-bit, mono) */
   play(base64Pcm: string): void {
+    void this.playInternal(base64Pcm);
+  }
+
+  private async playInternal(base64Pcm: string): Promise<void> {
     if (!this.audioContext) return;
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
 
     const pcm = Uint8Array.from(atob(base64Pcm), (c) => c.charCodeAt(0));
     const float32 = new Float32Array(pcm.length / 2);

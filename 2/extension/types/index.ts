@@ -72,11 +72,18 @@ export interface AudioOutMessage {
   data: string; // base64 PCM (24kHz mono s16le)
 }
 
+export interface TranscriptionMessage {
+  type: 'transcription';
+  speaker: 'user' | 'agent';
+  text: string;
+}
+
 export type DataChannelMessage =
   | ToolRequest
   | ToolResponse
   | AudioInMessage
-  | AudioOutMessage;
+  | AudioOutMessage
+  | TranscriptionMessage;
 
 // Session state managed by the background service worker
 export interface SessionState {

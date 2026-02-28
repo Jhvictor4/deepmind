@@ -303,6 +303,15 @@ class ExtensionBridge:
             "data": base64.b64encode(pcm_bytes).decode("ascii"),
         }))
 
+    async def send_transcription(self, speaker: str, text: str) -> None:
+        if not self._ws or not text:
+            return
+        await self._ws.send(json.dumps({
+            "type": "transcription",
+            "speaker": speaker,
+            "text": text,
+        }))
+
 
 bridge = ExtensionBridge()
 
@@ -375,7 +384,9 @@ async def receive_responses(session) -> None:
                 and server.input_transcription
                 and server.input_transcription.text
             ):
-                logger.info(f"[User said] {server.input_transcription.text}")
+                text = server.input_transcription.text
+                logger.info(f"[User said] {text}")
+                await bridge.send_transcription("user", text)
 
             # Output transcription
             if (
@@ -384,7 +395,9 @@ async def receive_responses(session) -> None:
                 and server.output_transcription
                 and server.output_transcription.text
             ):
-                logger.info(f"[Agent said] {server.output_transcription.text}")
+                text = server.output_transcription.text
+                logger.info(f"[Agent said] {text}")
+                await bridge.send_transcription("agent", text)
 
             # Interruption — flush audio queue
             if server and server.interrupted:

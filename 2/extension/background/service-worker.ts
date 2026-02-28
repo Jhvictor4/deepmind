@@ -224,6 +224,15 @@ function handleDataFromAgent(msg: DataChannelMessage): void {
         },
       });
     }
+    return;
+  }
+
+  if (msg.type === 'transcription' && session.tabId) {
+    sendToTab(session.tabId, {
+      type: 'TRANSCRIPTION',
+      speaker: msg.speaker,
+      text: msg.text,
+    });
   }
 }
 
