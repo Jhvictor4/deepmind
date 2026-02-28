@@ -6,9 +6,10 @@
  * 2. Execute browser actions (click, type, scroll)
  * 3. Show highlight overlays
  * 4. Relay messages between bar UI and background service worker
+ * 5. Handle tool requests from agent via data channel (relayed through background)
  */
 
-import type { Message, BrowserAction } from '../types';
+import type { Message, BrowserAction, ToolRequest, ToolResponse } from '../types';
 import { SafeNavBar } from '../bar/bar';
 import {
   highlightElement,
@@ -124,10 +125,116 @@ function handleMessage(message: Message): void {
       bar.setState('acting');
       bar.setTaskProgress(message.current, message.total, message.description);
       break;
+
+    // ── Data Channel Tool Request (from agent via background) ──
+    case 'TOOL_REQUEST':
+      handleToolRequest(message.request);
+      break;
   }
 }
 
-// ── Browser Action Execution ──
+// ── Tool Request Handler (from agent via LiveKit data channel) ──
+
+async function handleToolRequest(request: ToolRequest): Promise<void> {
+  const { id, tool, params } = request;
+  let success = true;
+  let result = '';
+
+  try {
+    bar.setState('acting');
+
+    switch (tool) {
+      case 'clickElement': {
+        const x = params.x as number;
+        const y = params.y as number;
+        const el = document.elementFromPoint(x, y);
+        if (el instanceof HTMLElement) {
+          showActionIndicator(x, y, '클릭 중...');
+          el.click();
+          result = `Clicked element <${el.tagName.toLowerCase()}> at (${x}, ${y})`;
+        } else {
+          result = `No clickable element found at (${x}, ${y})`;
+          success = false;
+        }
+        break;
+      }
+
+      case 'typeText': {
+        const text = params.text as string;
+        const selector = params.selector as string | undefined;
+        let target: Element | null = null;
+        if (selector) {
+          target = document.querySelector(selector);
+        } else {
+          target = document.activeElement;
+        }
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          target.focus();
+          target.value = text;
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+          target.dispatchEvent(new Event('change', { bubbles: true }));
+          result = `Typed "${text}" into <${target.tagName.toLowerCase()}>`;
+        } else {
+          result = 'No focusable input element found';
+          success = false;
+        }
+        break;
+      }
+
+      case 'scrollPage': {
+        const direction = params.direction as 'up' | 'down';
+        const amount = (params.amount as number) ?? 300;
+        const scrollAmount = direction === 'down' ? amount : -amount;
+        window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+        result = `Scrolled ${direction} ${amount}px`;
+        break;
+      }
+
+      case 'navigateTo': {
+        const url = params.url as string;
+        window.location.href = url;
+        result = `Navigating to ${url}`;
+        break;
+      }
+
+      case 'takeScreenshot': {
+        // Delegate to background for chrome.tabs.captureVisibleTab
+        result = 'Screenshot request delegated to background';
+        break;
+      }
+
+      default:
+        result = `Unknown tool: ${tool}`;
+        success = false;
+    }
+  } catch (err) {
+    success = false;
+    result = `Error executing ${tool}: ${String(err)}`;
+  }
+
+  // Send tool response back to background → agent via data channel
+  const response: ToolResponse = {
+    type: 'tool_response',
+    id,
+    success,
+    result,
+  };
+
+  chrome.runtime.sendMessage({
+    type: 'TOOL_RESPONSE_FROM_CONTENT',
+    response,
+  } as Message);
+
+  // Restore bar state after action
+  setTimeout(() => {
+    if (sessionActive) {
+      bar.setState('active');
+    }
+    clearAll();
+  }, 1500);
+}
+
+// ── Browser Action Execution (legacy — kept for direct background commands) ──
 async function executeAction(action: BrowserAction): Promise<void> {
   try {
     switch (action.type) {
@@ -182,6 +289,5 @@ async function executeAction(action: BrowserAction): Promise<void> {
 function captureScreenshot(): void {
   // Use html2canvas-like approach or just send a placeholder
   // Real implementation would use chrome.tabs.captureVisibleTab in background
-  // For now, notify background that screenshot is not available from content script
   console.log('[SafeNav] Screenshot requested — delegating to background');
 }

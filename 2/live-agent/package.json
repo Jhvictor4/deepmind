@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "dev": "pnpm run build && node dist/main.js dev",
     "download-files": "pnpm run build && node dist/main.js download-files",
-    "start": "node dist/main.js start"
+    "start": "node dist/main.js start",
+    "token-server": "tsx src/token-server.ts",
+    "dev:all": "tsx src/token-server.ts & pnpm run build && node dist/main.js dev"
   },
   "engines": {
     "node": ">=22.0.0",
@@ -28,6 +30,7 @@
     "eslint": "^9.39.3",
     "globals": "^16.5.0",
     "jiti": "^2.6.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",
     "vite": "^7.3.1",
@@ -41,6 +44,7 @@
     "@livekit/noise-cancellation-node": "^0.1.9",
     "@livekit/rtc-node": "^0.13.24",
     "dotenv": "^17.3.1",
+    "livekit-server-sdk": "^2.15.0",
     "zod": "^3.25.76"
   }
 }

@@ -42,7 +42,27 @@ export type Message =
   | { type: 'STATUS_UPDATE'; status: BarState; detail?: string }
   | { type: 'HIGHLIGHT_ELEMENT'; selector: string; label?: string }
   | { type: 'CLEAR_HIGHLIGHT' }
-  | { type: 'TASK_PROGRESS'; current: number; total: number; description: string };
+  | { type: 'TASK_PROGRESS'; current: number; total: number; description: string }
+  | { type: 'TOOL_REQUEST'; request: ToolRequest }
+  | { type: 'TOOL_RESPONSE_FROM_CONTENT'; response: ToolResponse };
+
+// ── Data Channel Protocol: Agent ↔ Extension (via LiveKit) ──
+
+export interface ToolRequest {
+  type: 'tool_request';
+  id: string;
+  tool: 'clickElement' | 'typeText' | 'scrollPage' | 'navigateTo' | 'takeScreenshot';
+  params: Record<string, unknown>;
+}
+
+export interface ToolResponse {
+  type: 'tool_response';
+  id: string;
+  success: boolean;
+  result: string;
+}
+
+export type DataChannelMessage = ToolRequest | ToolResponse;
 
 // Session state managed by the background service worker
 export interface SessionState {

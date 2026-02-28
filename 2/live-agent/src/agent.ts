@@ -3,10 +3,35 @@ import type { Track, VideoFrame } from '@livekit/rtc-node';
 import { RoomEvent, TrackKind, VideoStream } from '@livekit/rtc-node';
 import { z } from 'zod';
 
+// ── Data Channel Protocol Types ──
+
+interface ToolRequest {
+  type: 'tool_request';
+  id: string;
+  tool: string;
+  params: Record<string, unknown>;
+}
+
+interface ToolResponse {
+  type: 'tool_response';
+  id: string;
+  success: boolean;
+  result: string;
+}
+
+interface PendingRequest {
+  resolve: (value: string) => void;
+  reject: (reason: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
+// ── Agent ──
+
 export class Agent extends voice.Agent {
   private latestFrame: VideoFrame | null = null;
   private videoStream: VideoStream | null = null;
   private tasks: Set<Task<void>> = new Set();
+  private pendingRequests: Map<string, PendingRequest> = new Map();
 
   constructor() {
     super({
@@ -30,8 +55,7 @@ You have access to browser navigation tools. When the user asks for help with a 
           description: 'Capture the current browser tab screenshot to see what the user sees',
           parameters: z.object({}),
           execute: async () => {
-            console.log('  📸 [MOCK] take_screenshot');
-            return 'Screenshot captured. I can see the current page.';
+            return this.sendToolRequest('takeScreenshot', {});
           },
         }),
         clickElement: llm.tool({
@@ -41,8 +65,7 @@ You have access to browser navigation tools. When the user asks for help with a 
             y: z.number().describe('Y coordinate'),
           }),
           execute: async ({ x, y }) => {
-            console.log(`  🖱️  [MOCK] click at (${x}, ${y})`);
-            return `Clicked at position (${x}, ${y})`;
+            return this.sendToolRequest('clickElement', { x, y });
           },
         }),
         typeText: llm.tool({
@@ -51,8 +74,7 @@ You have access to browser navigation tools. When the user asks for help with a 
             text: z.string().describe('Text to type'),
           }),
           execute: async ({ text }) => {
-            console.log(`  ⌨️  [MOCK] type: "${text}"`);
-            return `Typed: "${text}"`;
+            return this.sendToolRequest('typeText', { text });
           },
         }),
         scrollPage: llm.tool({
@@ -62,8 +84,7 @@ You have access to browser navigation tools. When the user asks for help with a 
             amount: z.number().optional().describe('Pixels to scroll, default 300'),
           }),
           execute: async ({ direction, amount }) => {
-            console.log(`  🔄 [MOCK] scroll ${direction} ${amount ?? 300}px`);
-            return `Scrolled ${direction} ${amount ?? 300}px`;
+            return this.sendToolRequest('scrollPage', { direction, amount: amount ?? 300 });
           },
         }),
         navigateTo: llm.tool({
@@ -72,17 +93,76 @@ You have access to browser navigation tools. When the user asks for help with a 
             url: z.string().describe('URL to navigate to'),
           }),
           execute: async ({ url }) => {
-            console.log(`  🌐 [MOCK] navigate to: ${url}`);
-            return `Navigated to ${url}`;
+            return this.sendToolRequest('navigateTo', { url });
           },
         }),
       },
     });
   }
 
-  // Subscribe to screen share / video tracks when agent enters the room
+  // ── Data Channel: send tool request and wait for response ──
+
+  private async sendToolRequest(tool: string, params: Record<string, unknown>): Promise<string> {
+    const id = crypto.randomUUID();
+    const msg: ToolRequest = { type: 'tool_request', id, tool, params };
+    const encoded = new TextEncoder().encode(JSON.stringify(msg));
+
+    const room = getJobContext().room;
+
+    console.log(`🔧 Sending tool request: ${tool}`, params);
+
+    // Publish to all participants (the extension will pick it up)
+    await room.localParticipant.publishData(encoded, { reliable: true });
+
+    // Wait for response with timeout
+    return new Promise<string>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(id);
+        reject(new Error(`Tool request "${tool}" timed out after 15s`));
+      }, 15_000);
+
+      this.pendingRequests.set(id, { resolve, reject, timeout });
+    });
+  }
+
+  // ── Data Channel: handle incoming responses ──
+
+  private handleDataReceived(payload: Uint8Array): void {
+    try {
+      const text = new TextDecoder().decode(payload);
+      const msg = JSON.parse(text);
+
+      if (msg.type === 'tool_response') {
+        const response = msg as ToolResponse;
+        const pending = this.pendingRequests.get(response.id);
+        if (pending) {
+          clearTimeout(pending.timeout);
+          this.pendingRequests.delete(response.id);
+
+          if (response.success) {
+            console.log(`✅ Tool response: ${response.result}`);
+            pending.resolve(response.result);
+          } else {
+            console.log(`❌ Tool failed: ${response.result}`);
+            pending.resolve(`Action failed: ${response.result}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to parse data channel message:', err);
+    }
+  }
+
+  // ── Lifecycle ──
+
+  // Subscribe to screen share / video tracks and data channel when agent enters the room
   async onEnter(): Promise<void> {
     const room = getJobContext().room;
+
+    // Listen for data channel messages (tool responses from extension)
+    room.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
+      this.handleDataReceived(payload);
+    });
 
     // Check existing participants for video tracks
     const remoteParticipants = Array.from(room.remoteParticipants.values());
