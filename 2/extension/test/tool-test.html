@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>SafeNav Tool Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #f5f5f5; padding: 24px; min-height: 200vh; }
+    h1 { margin-bottom: 16px; }
+    .section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .section h2 { margin-bottom: 12px; font-size: 16px; color: #333; }
+    #test-btn { padding: 12px 24px; font-size: 16px; background: #4285f4; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    #test-btn:hover { background: #3367d6; }
+    #test-input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; width: 300px; }
+    #test-textarea { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 100%; height: 80px; margin-top: 8px; }
+    .log { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; font-family: 'Fira Code', monospace; font-size: 13px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+    .log .pass { color: #4ec9b0; }
+    .log .fail { color: #f44747; }
+    .log .info { color: #569cd6; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .controls button { padding: 8px 16px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+    .controls button:hover { background: #e8e8e8; }
+    .controls button.run-all { background: #4285f4; color: #fff; border: none; font-weight: 600; }
+    .scroll-marker { margin-top: 800px; padding: 20px; background: #e8f5e9; border-radius: 8px; text-align: center; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>SafeNav Tool Test Page</h1>
+
+  <!-- Click target -->
+  <div class="section">
+    <h2>1. Click Test</h2>
+    <button id="test-btn" onclick="this.dataset.clicked='true'; this.textContent='Clicked!'">Click Me</button>
+    <p style="margin-top:8px; color:#666;" id="click-status">Status: waiting</p>
+  </div>
+
+  <!-- Type target -->
+  <div class="section">
+    <h2>2. Type Test</h2>
+    <input id="test-input" type="text" placeholder="Text will appear here...">
+    <textarea id="test-textarea" placeholder="Textarea test..."></textarea>
+  </div>
+
+  <!-- Scroll (page is 200vh so scrolling is possible) -->
+  <div class="section">
+    <h2>3. Scroll Test</h2>
+    <p>Current scroll Y: <strong id="scroll-y">0</strong>px</p>
+  </div>
+
+  <!-- Log output -->
+  <div class="section">
+    <h2>Test Runner</h2>
+    <div class="controls">
+      <button class="run-all" onclick="runAllTests()">Run All Tests</button>
+      <button onclick="testClick()">Test Click</button>
+      <button onclick="testType()">Test Type</button>
+      <button onclick="testScroll()">Test Scroll</button>
+      <button onclick="clearLog()">Clear Log</button>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="scroll-marker">--- Scroll Target (800px below) ---</div>
+
+  <script>
+    const logEl = document.getElementById('log');
+
+    function log(msg, cls = 'info') {
+      const time = new Date().toLocaleTimeString();
+      logEl.innerHTML += `<span class="${cls}">[${time}] ${msg}</span>\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() {
+      logEl.innerHTML = '';
+    }
+
+    // Update scroll position display
+    window.addEventListener('scroll', () => {
+      document.getElementById('scroll-y').textContent = Math.round(window.scrollY);
+    });
+
+    // ── Send fake TOOL_REQUEST via chrome.runtime message ──
+    function sendToolRequest(tool, params) {
+      return new Promise((resolve) => {
+        const id = 'test-' + Math.random().toString(36).slice(2, 8);
+
+        // Listen for the tool_response from content script
+        const handler = (message) => {
+          if (message.type === 'TOOL_RESPONSE_FROM_CONTENT' && message.response?.id === id) {
+            chrome.runtime.onMessage.removeListener(handler);
+            resolve(message.response);
+          }
+        };
+        chrome.runtime.onMessage.addListener(handler);
+
+        // Simulate background sending TOOL_REQUEST to content script
+        // We dispatch it directly as a chrome.runtime message to ourselves
+        window.postMessage({
+          source: 'safenav-test',
+          type: 'TOOL_REQUEST',
+          request: { type: 'tool_request', id, tool, params },
+        }, '*');
+
+        // Timeout fallback
+        setTimeout(() => {
+          chrome.runtime.onMessage.removeListener(handler);
+          resolve({ id, success: false, result: 'Timeout — no response from content script' });
+        }, 5000);
+      });
+    }
+
+    // Direct DOM-level test (bypasses chrome.runtime, tests the logic directly)
+    function simulateToolRequest(tool, params) {
+      const id = 'test-' + Math.random().toString(36).slice(2, 8);
+      const request = { type: 'tool_request', id, tool, params };
+
+      log(`Sending: ${tool}(${JSON.stringify(params)})`, 'info');
+
+      // Dispatch directly to content script's message listener
+      const event = { type: 'TOOL_REQUEST', request };
+      chrome.runtime.sendMessage(event);
+
+      return id;
+    }
+
+    // ── Individual Tests ──
+
+    async function testClick() {
+      log('── Click Test ──', 'info');
+      const btn = document.getElementById('test-btn');
+      btn.textContent = 'Click Me';
+      btn.dataset.clicked = 'false';
+      document.getElementById('click-status').textContent = 'Status: waiting';
+
+      const rect = btn.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+
+      btn.addEventListener('click', function handler() {
+        document.getElementById('click-status').textContent = 'Status: CLICKED!';
+        btn.removeEventListener('click', handler);
+      });
+
+      simulateToolRequest('clickElement', { x, y });
+
+      // Wait and verify
+      await sleep(500);
+      if (btn.dataset.clicked === 'true') {
+        log('PASS: Button was clicked', 'pass');
+      } else {
+        log('FAIL: Button was NOT clicked', 'fail');
+      }
+    }
+
+    async function testType() {
+      log('── Type Test ──', 'info');
+      const input = document.getElementById('test-input');
+      input.value = '';
+      input.focus();
+
+      simulateToolRequest('typeText', { text: 'Hello SafeNav!' });
+
+      await sleep(500);
+      if (input.value === 'Hello SafeNav!') {
+        log(`PASS: Input value = "${input.value}"`, 'pass');
+      } else {
+        log(`FAIL: Input value = "${input.value}" (expected "Hello SafeNav!")`, 'fail');
+      }
+
+      // Test with selector
+      const textarea = document.getElementById('test-textarea');
+      textarea.value = '';
+
+      simulateToolRequest('typeText', { text: 'Textarea test', selector: '#test-textarea' });
+
+      await sleep(500);
+      if (textarea.value === 'Textarea test') {
+        log(`PASS: Textarea value = "${textarea.value}"`, 'pass');
+      } else {
+        log(`FAIL: Textarea value = "${textarea.value}" (expected "Textarea test")`, 'fail');
+      }
+    }
+
+    async function testScroll() {
+      log('── Scroll Test ──', 'info');
+      window.scrollTo(0, 0);
+      await sleep(300);
+      const before = window.scrollY;
+
+      simulateToolRequest('scrollPage', { direction: 'down', amount: 400 });
+
+      await sleep(800); // smooth scroll takes time
+      const after = window.scrollY;
+
+      if (after > before) {
+        log(`PASS: Scrolled from ${before}px to ${after}px`, 'pass');
+      } else {
+        log(`FAIL: Scroll did not change (still at ${after}px)`, 'fail');
+      }
+
+      // Scroll back up
+      simulateToolRequest('scrollPage', { direction: 'up', amount: 400 });
+      await sleep(800);
+      const final = window.scrollY;
+      if (final < after) {
+        log(`PASS: Scrolled back up to ${final}px`, 'pass');
+      } else {
+        log(`FAIL: Scroll up did not work (still at ${final}px)`, 'fail');
+      }
+    }
+
+    async function runAllTests() {
+      clearLog();
+      log('Starting all tool tests...', 'info');
+      log('', 'info');
+
+      await testClick();
+      log('', 'info');
+      await testType();
+      log('', 'info');
+      await testScroll();
+
+      log('', 'info');
+      log('All tests complete.', 'info');
+    }
+
+    function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    log('Test page loaded. Extension content script should be injected.', 'info');
+    log('Click "Run All Tests" to verify tool execution.', 'info');
+  </script>
+</body>
+</html>

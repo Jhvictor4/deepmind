@@ -21,7 +21,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .logo-icon {
@@ -36,63 +36,36 @@
       font-weight: 600;
     }
 
-    label {
-      display: block;
-      font-size: 12px;
-      color: #999999;
-      margin-bottom: 6px;
+    .info {
+      font-size: 13px;
+      color: #bbb;
+      line-height: 1.5;
+      margin-bottom: 16px;
     }
 
-    input[type="password"] {
-      width: 100%;
-      padding: 8px 12px;
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
       background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: #ffffff;
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="password"]:focus {
-      border-color: #4285f4;
-    }
-
-    .btn {
-      width: 100%;
-      margin-top: 12px;
-      padding: 8px;
-      background: #4285f4;
-      color: #ffffff;
-      border: none;
       border-radius: 6px;
       font-size: 13px;
-      font-family: inherit;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
     }
 
-    .btn:hover {
-      background: #3b78e7;
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #999;
     }
 
-    .status {
-      margin-top: 10px;
-      font-size: 11px;
-      color: #999;
-      text-align: center;
-      min-height: 16px;
+    .dot.connected {
+      background: #34a853;
     }
 
-    .status.success {
-      color: #34a853;
-    }
-
-    .status.error {
-      color: #ea4335;
+    .status-text {
+      color: #ccc;
     }
   </style>
 </head>
@@ -102,49 +75,30 @@
     <h1>SafeNav</h1>
   </div>
 
-  <label for="api-key">Gemini API Key</label>
-  <input type="password" id="api-key" placeholder="Enter your API key..." />
+  <p class="info">
+    Voice-guided browser navigation.<br>
+    Click the SafeNav bar on any page to start a session.
+  </p>
 
-  <button class="btn" id="save-btn">Save</button>
-  <div class="status" id="status"></div>
+  <div class="status-row">
+    <div class="dot" id="dot"></div>
+    <span class="status-text" id="status">Checking server...</span>
+  </div>
 
   <script>
-    const input = document.getElementById('api-key');
-    const saveBtn = document.getElementById('save-btn');
+    const dot = document.getElementById('dot');
     const status = document.getElementById('status');
 
-    // Load saved key
-    chrome.storage.local.get('geminiApiKey', (result) => {
-      if (result.geminiApiKey) {
-        input.value = result.geminiApiKey;
-        status.textContent = 'API key saved';
-        status.className = 'status success';
-      }
-    });
-
-    // Save key
-    saveBtn.addEventListener('click', () => {
-      const key = input.value.trim();
-      if (!key) {
-        status.textContent = 'Please enter an API key';
-        status.className = 'status error';
-        return;
-      }
-
-      chrome.storage.local.set({ geminiApiKey: key }, () => {
-        status.textContent = 'Saved!';
-        status.className = 'status success';
-        setTimeout(() => {
-          status.textContent = '';
-          status.className = 'status';
-        }, 2000);
+    // Check if token server is reachable
+    fetch('http://localhost:8081/health')
+      .then(r => r.json())
+      .then(() => {
+        dot.classList.add('connected');
+        status.textContent = 'Server connected';
+      })
+      .catch(() => {
+        status.textContent = 'Server offline — run pnpm dev:all';
       });
-    });
-
-    // Save on Enter
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') saveBtn.click();
-    });
   </script>
 </body>
 </html>
