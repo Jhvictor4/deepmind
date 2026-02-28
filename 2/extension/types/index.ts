@@ -44,7 +44,8 @@ export type Message =
   | { type: 'CLEAR_HIGHLIGHT' }
   | { type: 'TASK_PROGRESS'; current: number; total: number; description: string }
   | { type: 'TOOL_REQUEST'; request: ToolRequest }
-  | { type: 'TOOL_RESPONSE_FROM_CONTENT'; response: ToolResponse };
+  | { type: 'TOOL_RESPONSE_FROM_CONTENT'; response: ToolResponse }
+  | { type: 'TEXT_INPUT'; text: string };
 
 // ── Data Channel Protocol: Agent ↔ Extension (via LiveKit) ──
 
@@ -78,12 +79,18 @@ export interface TranscriptionMessage {
   text: string;
 }
 
+export interface TextInputMessage {
+  type: 'text_input';
+  text: string;
+}
+
 export type DataChannelMessage =
   | ToolRequest
   | ToolResponse
   | AudioInMessage
   | AudioOutMessage
-  | TranscriptionMessage;
+  | TranscriptionMessage
+  | TextInputMessage;
 
 // Session state managed by the background service worker
 export interface SessionState {

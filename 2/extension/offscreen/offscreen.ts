@@ -44,6 +44,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case 'OFFSCREEN_SEND_DATA': {
       // Forward tool responses / audio chunks from extension to agent via WebSocket
+      console.log('[SafeNav Offscreen] OFFSCREEN_SEND_DATA, type:', message.data?.type, 'wsOpen:', ws?.readyState === WebSocket.OPEN);
       sendToAgent(message.data);
       sendResponse({ ok: true });
       return false;
@@ -111,6 +112,7 @@ function connectWebSocket(): Promise<void> {
     ws.onmessage = (event) => {
       try {
         const msg: DataChannelMessage = JSON.parse(event.data);
+        console.log('[SafeNav Offscreen] WS received:', msg.type, 'dataLen:', ('data' in msg && typeof msg.data === 'string') ? msg.data.length : 'N/A');
         // Relay tool requests and audio output from agent.
         if (msg.type === 'audio_out') {
           chrome.runtime.sendMessage({

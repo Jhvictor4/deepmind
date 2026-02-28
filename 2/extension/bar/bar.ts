@@ -215,10 +215,13 @@ export class SafeNavBar {
     this.fabEl = document.createElement('button');
     this.fabEl.className = 'sn-fab';
 
-    // Mic icon (default)
-    const fabMic = document.createElement('span');
-    fabMic.className = 'sn-fab-icon-mic';
-    fabMic.innerHTML = MIC_SVG;
+    // Gemini icon (default)
+    const fabGemini = document.createElement('span');
+    fabGemini.className = 'sn-fab-icon-gemini';
+    const geminiImg = document.createElement('img');
+    geminiImg.src = chrome.runtime.getURL('assets/icon-48.png');
+    geminiImg.alt = 'SafeNav';
+    fabGemini.appendChild(geminiImg);
 
     // Close icon (shown when panel open)
     const fabClose = document.createElement('span');
@@ -234,7 +237,7 @@ export class SafeNavBar {
     this.badgeEl.className = 'sn-fab-badge';
     this.badgeEl.textContent = '0';
 
-    this.fabEl.appendChild(fabMic);
+    this.fabEl.appendChild(fabGemini);
     this.fabEl.appendChild(fabClose);
     this.fabEl.appendChild(pulseRing);
     this.fabEl.appendChild(this.badgeEl);

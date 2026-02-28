@@ -63,6 +63,7 @@ export class AudioCapture {
 
 export class AudioPlayer {
   private audioContext: AudioContext | null = null;
+  private nextStartTime = 0;
 
   constructor() {
     this.audioContext = new AudioContext({ sampleRate: 24000 });
@@ -87,20 +88,24 @@ export class AudioPlayer {
       float32[i] = view.getInt16(i * 2, true) / 32768;
     }
 
-    const buffer = this.audioContext.createBuffer(
-      1,
-      float32.length,
-      24000,
-    );
+    const buffer = this.audioContext.createBuffer(1, float32.length, 24000);
     buffer.getChannelData(0).set(float32);
 
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(this.audioContext.destination);
-    source.start();
+
+    // Schedule each chunk to start right after the previous one ends
+    const now = this.audioContext.currentTime;
+    if (this.nextStartTime < now) {
+      this.nextStartTime = now;
+    }
+    source.start(this.nextStartTime);
+    this.nextStartTime += buffer.duration;
   }
 
   stop(): void {
+    this.nextStartTime = 0;
     this.audioContext?.close();
     this.audioContext = null;
   }

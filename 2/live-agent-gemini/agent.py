@@ -221,6 +221,7 @@ class ExtensionBridge:
 
     async def _on_message(self, msg: dict) -> None:
         msg_type = msg.get("type")
+        logger.info(f"[WS recv] type={msg_type}, keys={list(msg.keys())}")
 
         if msg_type == "tool_response":
             # Extension replies to a tool request
@@ -235,18 +236,29 @@ class ExtensionBridge:
                 await self._gemini_session.send_realtime_input(
                     video=types.Blob(data=jpeg_bytes, mime_type="image/jpeg")
                 )
-                logger.debug("Forwarded screen frame from extension to Gemini")
+                logger.info("Forwarded screen frame from extension to Gemini")
+
+        elif msg_type == "text_input":
+            # Extension sends a text message from the user
+            text = msg.get("text", "").strip()
+            if text and self._gemini_session:
+                logger.info(f"[Text input] {text}")
+                await self._gemini_session.send_realtime_input(text=text)
 
         elif msg_type == "audio_in":
             # Extension sends user mic audio (base64 PCM 16kHz s16le)
-            if msg.get("data"):
-                pcm_bytes = base64.b64decode(msg["data"])
+            data = msg.get("data")
+            if data:
+                pcm_bytes = base64.b64decode(data)
+                logger.info(f"[WS recv] audio_in: {len(pcm_bytes)} bytes PCM")
                 if self._audio_in_queue.full():
                     try:
                         self._audio_in_queue.get_nowait()
                     except asyncio.QueueEmpty:
                         pass
                 self._audio_in_queue.put_nowait(pcm_bytes)
+            else:
+                logger.warning("[WS recv] audio_in with no data")
 
     # ── Notify Gemini about connection state changes ──
 
@@ -254,13 +266,7 @@ class ExtensionBridge:
         if not self._gemini_session:
             return
         try:
-            await self._gemini_session.send_client_content(
-                turns=types.Content(
-                    role="user",
-                    parts=[types.Part(text=text)],
-                ),
-                turn_complete=True,
-            )
+            await self._gemini_session.send_realtime_input(text=text)
         except Exception as e:
             logger.warning(f"Failed to notify model: {e}")
 
@@ -355,8 +361,12 @@ async def send_audio(session, mic_queue: asyncio.Queue) -> None:
 
 async def send_extension_audio(session) -> None:
     """Forward extension mic audio to the Live API session."""
+    chunk_count = 0
     while True:
         data = await bridge.recv_extension_audio()
+        chunk_count += 1
+        if chunk_count <= 5 or chunk_count % 50 == 0:
+            logger.info(f"[send_extension_audio] chunk #{chunk_count}, {len(data)} bytes → Gemini")
         await session.send_realtime_input(
             audio=types.Blob(data=data, mime_type="audio/pcm")
         )
@@ -366,38 +376,44 @@ async def receive_responses(session) -> None:
     """Receive model responses — audio, transcriptions, and tool calls."""
     while True:
         turn = session.receive()
+        user_transcript = ""
+        agent_transcript = ""
+
         async for response in turn:
             server = response.server_content
 
             # Audio data
             if server and server.model_turn:
                 for part in server.model_turn.parts:
-                    if part.inline_data and isinstance(part.inline_data.data, bytes):
-                        audio_out_queue.put_nowait(part.inline_data.data)
+                    if part.inline_data:
+                        data = part.inline_data.data
+                        dtype = type(data).__name__
+                        dlen = len(data) if data else 0
+                        if isinstance(data, bytes):
+                            audio_out_queue.put_nowait(data)
+                            logger.debug(f"[audio_out] {dlen} bytes queued (type={dtype})")
+                        else:
+                            logger.warning(f"[audio_out] unexpected data type={dtype}, len={dlen}")
                     if part.text:
                         logger.info(f"[Model text] {part.text}")
 
-            # Input transcription
+            # Accumulate input transcription deltas
             if (
                 server
                 and hasattr(server, "input_transcription")
                 and server.input_transcription
                 and server.input_transcription.text
             ):
-                text = server.input_transcription.text
-                logger.info(f"[User said] {text}")
-                await bridge.send_transcription("user", text)
+                user_transcript += server.input_transcription.text
 
-            # Output transcription
+            # Accumulate output transcription deltas
             if (
                 server
                 and hasattr(server, "output_transcription")
                 and server.output_transcription
                 and server.output_transcription.text
             ):
-                text = server.output_transcription.text
-                logger.info(f"[Agent said] {text}")
-                await bridge.send_transcription("agent", text)
+                agent_transcript += server.output_transcription.text
 
             # Interruption — flush audio queue
             if server and server.interrupted:
@@ -419,6 +435,14 @@ async def receive_responses(session) -> None:
                     function_responses=func_responses
                 )
 
+        # Turn complete — send one bubble per speaker per turn
+        if user_transcript:
+            logger.info(f"[User said] {user_transcript}")
+            await bridge.send_transcription("user", user_transcript)
+        if agent_transcript:
+            logger.info(f"[Agent said] {agent_transcript}")
+            await bridge.send_transcription("agent", agent_transcript)
+
 
 async def play_audio(pya: Any) -> None:
     """Play received audio through speakers."""
@@ -439,8 +463,12 @@ async def play_audio(pya: Any) -> None:
 
 async def send_audio_to_extension() -> None:
     """Send model audio chunks to the extension for browser playback."""
+    chunk_count = 0
     while True:
         data = await audio_out_queue.get()
+        chunk_count += 1
+        if chunk_count <= 5 or chunk_count % 50 == 0:
+            logger.info(f"[send_audio_to_extension] chunk #{chunk_count}, {len(data)} bytes → extension")
         await bridge.send_audio_out(data)
 
 
@@ -454,22 +482,14 @@ async def send_initial_greeting(session) -> None:
         else "[SYSTEM] Chrome 브라우저 확장 프로그램이 아직 연결되지 않았습니다. 브라우저 도구와 화면 공유를 사용할 수 없습니다."
     )
 
-    await session.send_client_content(
-        turns=types.Content(
-            role="user",
-            parts=[
-                types.Part(
-                    text=(
-                        f"{ext_status}\n\n"
-                        "사용자가 방금 연결했습니다. 한국어로 따뜻하게 인사해주세요. "
-                        "자신을 SafeNav(세이프내브)라고 소개하고, "
-                        "어려운 웹사이트를 탐색하는 것을 도와줄 수 있다고 알려주세요. "
-                        "오늘 어떤 웹사이트에서 도움이 필요한지 물어보세요."
-                    )
-                )
-            ],
-        ),
-        turn_complete=True,
+    await session.send_realtime_input(
+        text=(
+            f"{ext_status}\n\n"
+            "사용자가 방금 연결했습니다. 한국어로 따뜻하게 인사해주세요. "
+            "자신을 SafeNav(세이프내브)라고 소개하고, "
+            "어려운 웹사이트를 탐색하는 것을 도와줄 수 있다고 알려주세요. "
+            "오늘 어떤 웹사이트에서 도움이 필요한지 물어보세요."
+        )
     )
 
 

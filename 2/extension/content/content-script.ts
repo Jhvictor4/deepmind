@@ -45,6 +45,12 @@ bar.onToggle(() => {
   }
 });
 
+// ── Text Input Handler ──
+bar.onText((text) => {
+  bar.addTranscript('user', text);
+  chrome.runtime.sendMessage({ type: 'TEXT_INPUT', text } as Message);
+});
+
 function startSession(): void {
   bar.setState('connecting');
   chrome.runtime.sendMessage({ type: 'START_SESSION' } as Message);
@@ -72,11 +78,15 @@ function handleMessage(message: Message): void {
       sessionActive = true;
       bar.setState('active');
       // Start mic capture
+      console.log('[SafeNav Content] SESSION_STARTED — starting mic capture');
       audioCapture.start((base64Pcm) => {
+        console.log('[SafeNav Content] Sending AUDIO_DATA, size:', base64Pcm.length);
         chrome.runtime.sendMessage({
           type: 'AUDIO_DATA',
           data: base64Pcm,
         } as Message);
+      }).catch((err) => {
+        console.error('[SafeNav Content] Mic capture failed:', err);
       });
       break;
 
@@ -102,6 +112,7 @@ function handleMessage(message: Message): void {
       break;
 
     case 'PLAY_AUDIO':
+      console.log('[SafeNav Content] Playing audio, size:', message.data?.length ?? 0);
       audioPlayer.play(message.data);
       break;
 

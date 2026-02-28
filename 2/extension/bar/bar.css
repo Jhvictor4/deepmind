@@ -71,6 +71,19 @@
   transition: opacity 0.2s, transform 0.2s;
 }
 
+.sn-fab-icon-gemini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sn-fab-icon-gemini img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
 .sn-fab .sn-fab-icon-close {
   position: absolute;
   opacity: 0;
@@ -78,7 +91,7 @@
 }
 
 /* FAB icon swap when panel open */
-.sn-widget.panel-open .sn-fab .sn-fab-icon-mic {
+.sn-widget.panel-open .sn-fab .sn-fab-icon-gemini {
   opacity: 0;
   transform: rotate(90deg);
 }

@@ -26,6 +26,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'PLAY_AUDIO_TO_TAB') {
+    console.log('[SafeNav BG] PLAY_AUDIO_TO_TAB received, size:', String(message.data ?? '').length, 'tabId:', session.tabId);
     if (session.tabId) {
       sendToTab(session.tabId, { type: 'PLAY_AUDIO', data: String(message.data ?? '') });
     }
@@ -53,6 +54,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       stopSession().then(sendResponse);
       return true;
 
+    case 'TEXT_INPUT':
+      sendToOffscreen('OFFSCREEN_SEND_DATA', {
+        data: { type: 'text_input', text: msg.text },
+      });
+      sendResponse({ ok: true });
+      return false;
+
     case 'TOOL_RESPONSE_FROM_CONTENT':
       // Content script finished a tool — relay to offscreen → agent
       sendToOffscreen('OFFSCREEN_SEND_DATA', { data: msg.response });
@@ -61,6 +69,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'AUDIO_DATA':
       // Stream user microphone PCM to agent via offscreen WebSocket
+      console.log('[SafeNav BG] AUDIO_DATA received, size:', String(msg.data ?? '').length);
       sendToOffscreen('OFFSCREEN_SEND_DATA', {
         data: {
           type: 'audio_in',
