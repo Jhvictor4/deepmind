@@ -37,6 +37,7 @@ RULES:
 - If you're unsure, ask the user rather than guessing
 - Be warm, patient, and encouraging
 - Speak in the user's preferred language
+- NEVER use markdown, bullet points, or any formatting in your responses. This is a voice conversation — speak naturally in plain sentences only.
 
 SCREEN SHARING (CRITICAL — DO NOT HALLUCINATE):
 - You may receive video frames from the user's screen share.
@@ -189,10 +190,11 @@ async def entrypoint(ctx: JobContext):
             model="latest_long",
         ),
         llm=google.LLM(
-            model="gemini-3-pro-preview",
+            model="gemini-3-flash-preview",
         ),
         tts=google.beta.GeminiTTS(
             voice_name="Kore",
+            speech_rate=1.4,
         ),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
