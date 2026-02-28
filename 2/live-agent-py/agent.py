@@ -106,7 +106,18 @@ class SafeNavAgent(Agent):
     ) -> None:
         if self._latest_frame:
             logger.info("Attaching screen frame to user message")
-            new_message.content.append(ImageContent(image=self._latest_frame))
+            new_message.content.append(
+                "[SYSTEM: 아래 첨부된 스크린샷이 사용자의 현재 화면입니다. "
+                "반드시 이 이미지에 실제로 보이는 내용만 설명하세요. "
+                "이미지에 없는 내용을 절대 지어내지 마세요.]"
+            )
+            new_message.content.append(
+                ImageContent(
+                    image=self._latest_frame,
+                    inference_width=1024,
+                    inference_height=768,
+                )
+            )
             self._latest_frame = None
         else:
             new_message.content.append(
@@ -195,7 +206,7 @@ async def entrypoint(ctx: JobContext):
             model="latest_long",
         ),
         llm=google.LLM(
-            model="gemini-3-flash-preview",
+            model="gemini-3-pro-preview",
         ),
         tts=google.beta.GeminiTTS(
             voice_name="Kore",
