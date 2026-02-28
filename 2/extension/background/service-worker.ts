@@ -81,8 +81,13 @@ async function startSession(tabId: number | null): Promise<{ ok: boolean; error?
     // 1. Fetch LiveKit token with explicit room name
     const token = await fetchLivekitToken();
 
-    // 2. Get tab capture stream ID
-    const streamId = await getTabCaptureStreamId(tabId);
+    // 2. Try tab capture (may fail if extension wasn't invoked via action click)
+    let streamId: string | null = null;
+    try {
+      streamId = await getTabCaptureStreamId(tabId);
+    } catch (captureErr) {
+      console.warn('[SafeNav BG] Tab capture unavailable, starting without screen share:', captureErr);
+    }
 
     // 3. Create offscreen document and start LiveKit there
     await ensureOffscreenDocument();
@@ -97,7 +102,7 @@ async function startSession(tabId: number | null): Promise<{ ok: boolean; error?
       throw new Error(resp?.error || 'Offscreen failed to start');
     }
 
-    console.log('[SafeNav BG] Session started — screen share via offscreen');
+    console.log(`[SafeNav BG] Session started${streamId ? ' — with screen share' : ' — voice only'}`);
 
     sendToTab(tabId, { type: 'SESSION_STARTED' });
     sendToTab(tabId, { type: 'STATUS_UPDATE', status: 'active' });

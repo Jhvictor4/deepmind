@@ -45,27 +45,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // ── LiveKit Connection + Tab Capture ──
 
-async function startLiveKit(url: string, token: string, streamId: string): Promise<void> {
-  // 1. Get MediaStream from tabCapture streamId
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: false, // audio goes through mic, not tab capture
-    video: {
-      // @ts-expect-error — mandatory constraint for tabCapture streamId
-      mandatory: {
-        chromeMediaSource: 'tab',
-        chromeMediaSourceId: streamId,
-      },
-    },
-  });
-
-  const videoTrack = stream.getVideoTracks()[0];
-  if (!videoTrack) {
-    throw new Error('No video track from tab capture');
-  }
-
-  console.log('[SafeNav Offscreen] Tab capture video track obtained');
-
-  // 2. Connect to LiveKit room
+async function startLiveKit(url: string, token: string, streamId: string | null): Promise<void> {
+  // 1. Connect to LiveKit room first
   livekitRoom = new Room();
 
   // Listen for data channel messages from agent
@@ -92,14 +73,31 @@ async function startLiveKit(url: string, token: string, streamId: string): Promi
   await livekitRoom.connect(url, token);
   console.log('[SafeNav Offscreen] Connected to room:', livekitRoom.name);
 
-  // 3. Publish the tab capture video track
-  const localTrack = new LocalVideoTrack(videoTrack);
-  await livekitRoom.localParticipant.publishTrack(localTrack, {
-    name: 'screen-share',
-    source: Track.Source.ScreenShare,
-  });
+  // 2. Publish tab capture video track if streamId is available
+  if (streamId) {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        // @ts-expect-error — mandatory constraint for tabCapture streamId
+        mandatory: {
+          chromeMediaSource: 'tab',
+          chromeMediaSourceId: streamId,
+        },
+      },
+    });
 
-  console.log('[SafeNav Offscreen] Screen share track published');
+    const videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack) {
+      const localTrack = new LocalVideoTrack(videoTrack);
+      await livekitRoom.localParticipant.publishTrack(localTrack, {
+        name: 'screen-share',
+        source: Track.Source.ScreenShare,
+      });
+      console.log('[SafeNav Offscreen] Screen share track published');
+    }
+  } else {
+    console.log('[SafeNav Offscreen] No streamId — voice-only mode');
+  }
 }
 
 function stopLiveKit(): void {
