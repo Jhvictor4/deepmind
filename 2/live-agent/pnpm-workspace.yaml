@@ -1,1 +1,0 @@
-onlyBuiltDependencies: '["esbuild","onnxruntime-node","protobufjs","sharp","@ffmpeg-installer/darwin-arm64"]'
