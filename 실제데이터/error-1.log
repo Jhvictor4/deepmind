@@ -1,0 +1,14 @@
+====================================
+Data Logger System v1.0
+System Boot ... OK
+====================================
+[INFO] Initializing SPI bus... OK
+[INFO] Attempting to mount SD Card on CS pin 4...
+
+[ERROR] SD card initialization failed!
+[ERROR] SPI Communication Timeout: No response from module.
+> Check 1: Is the SD card properly inserted?
+> Check 2: Are the SPI pins (MOSI, MISO, SCK) physically connected?
+> Check 3: Is there a broken trace on the PCB routing to D11/D12/D13?
+
+[FAIL] Fatal Error. System Halted. Please inspect hardware.
