@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add @google/genai node-record-lpcm16 speaker dotenv)",
+      "Bash(pnpm add -D typescript @types/node @types/speaker)",
+      "Bash(pnpm add -D typescript @types/node)",
+      "Bash(pnpm approve-builds speaker protobufjs)",
+      "Bash(pnpm rebuild speaker)",
+      "Bash(node -e \"const r = require\\(''node-record-lpcm16''\\); console.log\\(Object.keys\\(r\\)\\); console.log\\(typeof r.record\\);\")",
+      "Bash(/tmp/gen_icons.py:*)",
+      "Bash(npm install)"
+    ]
+  }
+}
