@@ -1,10 +1,12 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Img,
   interpolate,
   useCurrentFrame,
   spring,
   useVideoConfig,
+  staticFile,
 } from "remotion";
 import { colors, fullScreen } from "../styles";
 
@@ -43,7 +45,7 @@ export const IntroSlide: React.FC = () => {
         {/* Title — solid white, no gradient clip */}
         <h1
           style={{
-            fontSize: 92,
+            fontSize: 122,
             fontWeight: 800,
             textAlign: "center",
             lineHeight: 1.15,
@@ -64,7 +66,7 @@ export const IntroSlide: React.FC = () => {
             alignItems: "center",
             gap: 14,
             marginTop: 24,
-            fontSize: 26,
+            fontSize: 44,
             color: colors.textMuted,
           }}
         >
@@ -72,7 +74,7 @@ export const IntroSlide: React.FC = () => {
           <span
             style={{
               fontWeight: 700,
-              fontSize: 30,
+              fontSize: 48,
               background: `linear-gradient(135deg, ${colors.gemini1}, ${colors.gemini2}, ${colors.gemini3}, ${colors.gemini4})`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -80,13 +82,17 @@ export const IntroSlide: React.FC = () => {
           >
             Google Gemini
           </span>
+          <Img
+            src={staticFile("images/gemini-logo.png")}
+            style={{ width: 44, height: 44 }}
+          />
         </div>
 
         {/* Hackathon tag — bottom, small */}
         <div
           style={{
             opacity: poweredByOpacity * 0.4,
-            fontSize: 22,
+            fontSize: 40,
             fontWeight: 500,
             color: colors.textMuted,
             letterSpacing: 3,

@@ -141,12 +141,12 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
                   border: `1.5px solid ${
                     isActive ? a.color : isDone ? `${colors.primary}50` : colors.divider
                   }`,
-                  fontSize: 18,
+                  fontSize: 24,
                   fontWeight: isActive ? 700 : 400,
                   color: isActive ? a.color : isDone ? colors.primary : colors.textMuted,
                 }}
               >
-                <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>
+                <span style={{ fontWeight: 800, fontSize: 24, letterSpacing: 1 }}>
                   {a.tag}
                 </span>
                 {isDone && (
@@ -176,7 +176,7 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
               borderRadius: 14,
               backgroundColor: `${agent.color}12`,
               border: `2px solid ${agent.color}30`,
-              fontSize: 20,
+              fontSize: 26,
               fontWeight: 900,
               color: agent.color,
               letterSpacing: 1,
@@ -185,12 +185,12 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
             {agent.tag}
           </div>
           <div>
-            <div style={{ fontSize: 20, color: agent.color, fontWeight: 600, letterSpacing: 2 }}>
+            <div style={{ fontSize: 26, color: agent.color, fontWeight: 600, letterSpacing: 2 }}>
               AGENT {agent.num}
             </div>
-            <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.2 }}>
+            <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.2 }}>
               {agent.nameKr}{" "}
-              <span style={{ fontSize: 22, color: colors.textMuted, fontWeight: 400 }}>
+              <span style={{ fontSize: 28, color: colors.textMuted, fontWeight: 400 }}>
                 {agent.name}
               </span>
             </div>
@@ -222,7 +222,7 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
                 right: 0,
                 background: `linear-gradient(transparent, ${colors.bg}ee)`,
                 padding: "24px 14px 12px",
-                fontSize: 20,
+                fontSize: 26,
                 color: colors.textSecondary,
                 textAlign: "center",
                 fontWeight: 600,
@@ -245,13 +245,13 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
               backgroundColor: `${colors.bgAlt}80`,
             }}
           >
-            <div style={{ fontSize: 22, fontWeight: 600, color: colors.textMuted, letterSpacing: 1 }}>
+            <div style={{ fontSize: 28, fontWeight: 600, color: colors.textMuted, letterSpacing: 1 }}>
               RAW INPUT
             </div>
             <div
               style={{
                 fontFamily: "'JetBrains Mono', 'Menlo', monospace",
-                fontSize: 22,
+                fontSize: 28,
                 lineHeight: 1.8,
                 color: colors.textSecondary,
                 whiteSpace: "pre-wrap",
@@ -277,7 +277,7 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
               minWidth: 70,
             }}
           >
-            <div style={{ fontSize: 18, fontWeight: 700, color: agent.color, letterSpacing: 1 }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: agent.color, letterSpacing: 1 }}>
               {processingWidth < 100 ? "PROCESSING" : "DONE"}
             </div>
             <div
@@ -298,7 +298,7 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
                 }}
               />
             </div>
-            <div style={{ fontSize: 36, color: agent.color }}>{"\u2192"}</div>
+            <div style={{ fontSize: 42, color: agent.color }}>{"\u2192"}</div>
           </div>
 
           {/* Output */}
@@ -315,13 +315,13 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
               border: `1px solid ${agent.color}20`,
             }}
           >
-            <div style={{ fontSize: 22, fontWeight: 600, color: agent.color, letterSpacing: 1 }}>
+            <div style={{ fontSize: 28, fontWeight: 600, color: agent.color, letterSpacing: 1 }}>
               {agent.outputLabel}
             </div>
             <div
               style={{
                 fontFamily: "'JetBrains Mono', 'Menlo', monospace",
-                fontSize: 22,
+                fontSize: 28,
                 lineHeight: 1.8,
                 color: colors.textSecondary,
                 whiteSpace: "pre-wrap",
@@ -345,7 +345,7 @@ export const AgentDemoSlide: React.FC<AgentDemoProps> = ({ agentIndex }) => {
           style={{
             opacity: hintOpacity,
             textAlign: "center",
-            fontSize: 24,
+            fontSize: 30,
             color: colors.textMuted,
             fontWeight: 500,
           }}

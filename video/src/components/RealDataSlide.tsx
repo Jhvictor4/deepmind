@@ -25,10 +25,10 @@ export const RealDataSlide: React.FC = () => {
     <AbsoluteFill style={fullScreen}>
       {/* Clean background */}
       <div style={{ position: "absolute", width: "100%", height: "100%", background: colors.bg }} />
-      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "44px 72px", gap: 24, zIndex: 1 }}>
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "36px 72px", gap: 18, zIndex: 1 }}>
         <div style={{ opacity: headerOpacity, textAlign: "center" }}>
-          <div style={{ fontSize: 24, color: colors.warning, fontWeight: 600, letterSpacing: 4, marginBottom: 10 }}>REAL DOCUMENTS</div>
-          <h2 style={{ fontSize: 50, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
+          <div style={{ fontSize: 36, color: colors.warning, fontWeight: 600, letterSpacing: 4, marginBottom: 10 }}>REAL DOCUMENTS</div>
+          <h2 style={{ fontSize: 62, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
             하드웨어 검증 엔지니어가 매일 씨름하는 <span style={{ color: colors.warning }}>실제 문서들</span>
           </h2>
         </div>
@@ -41,28 +41,26 @@ export const RealDataSlide: React.FC = () => {
             const boxO = interpolate(frame, [delay + 30, delay + 45], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
             return (
               <div key={i} style={{ opacity: o, transform: `translateY(${interpolate(s, [0, 1], [40, 0])}px)`, flex: 1, maxWidth: 540, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ position: "relative", flex: 1, borderRadius: 16, overflow: "hidden" }}>
+                <div style={{ position: "relative", flex: 1, maxHeight: 480, borderRadius: 16, overflow: "hidden" }}>
                   <Img src={staticFile(`images/${doc.image}`)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  {/* Clean bounding box — no glow */}
-                  <div style={{ position: "absolute", top: doc.boxPos.top, left: doc.boxPos.left, width: doc.boxPos.width, height: doc.boxPos.height, border: `3px solid ${colors.accent}`, borderRadius: 6, opacity: boxO }} />
-                  {boxO > 0.5 && <div style={{ position: "absolute", top: 14, right: 14, backgroundColor: `${colors.accent}ee`, borderRadius: 8, padding: "8px 18px", fontSize: 22, fontWeight: 700, color: "#fff" }}>KEY SECTION</div>}
+
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: `linear-gradient(transparent, ${colors.bg}cc)` }} />
                 </div>
 
                 {/* Document info — bigger text */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ fontSize: 30, fontWeight: 700, color: colors.warning }}>{doc.title}</div>
-                    <div style={{ fontSize: 24, color: colors.textSecondary, marginTop: 4 }}>{doc.org}</div>
+                    <div style={{ fontSize: 42, fontWeight: 700, color: colors.warning }}>{doc.title}</div>
+                    <div style={{ fontSize: 36, color: colors.textSecondary, marginTop: 4 }}>{doc.org}</div>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: colors.warning }}>{doc.pages}</div>
+                  <div style={{ fontSize: 40, fontWeight: 800, color: colors.warning }}>{doc.pages}</div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        <div style={{ opacity: interpolate(frame, [90, 110], [0, 1], { extrapolateRight: "clamp" }), textAlign: "center", fontSize: 28, color: colors.textSecondary }}>
+        <div style={{ opacity: interpolate(frame, [90, 110], [0, 1], { extrapolateRight: "clamp" }), textAlign: "center", fontSize: 48, color: colors.textSecondary, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontWeight: 700, color: colors.text }}>한 명의 엔지니어</span>가 이 모든 문서를 수작업 교차 검증 = <span style={{ fontWeight: 700, color: colors.accent }}>약 6개월 소요</span>
         </div>
       </div>

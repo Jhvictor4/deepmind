@@ -33,8 +33,8 @@ export const AgentArchSlide: React.FC = () => {
       <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "36px 60px", gap: 12, zIndex: 1 }}>
         {/* Header */}
         <div style={{ opacity: headerOpacity, textAlign: "center" }}>
-          <div style={{ fontSize: 24, color: colors.primary, fontWeight: 600, letterSpacing: 4, marginBottom: 8 }}>AGENTIC ARCHITECTURE</div>
-          <h2 style={{ fontSize: 48, fontWeight: 800, margin: 0 }}>
+          <div style={{ fontSize: 30, color: colors.primary, fontWeight: 600, letterSpacing: 4, marginBottom: 8 }}>AGENTIC ARCHITECTURE</div>
+          <h2 style={{ fontSize: 54, fontWeight: 800, margin: 0 }}>
             4개 Agent가 <span style={{ color: colors.primary }}>Orchestration</span>되어 협업
           </h2>
         </div>
@@ -61,9 +61,9 @@ export const AgentArchSlide: React.FC = () => {
               gap: 8,
             }}
           >
-            <div style={{ fontSize: 22, fontWeight: 600, color: colors.primary, letterSpacing: 2 }}>ORCHESTRATOR</div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: colors.text }}>Gemini Pro</div>
-            <div style={{ fontSize: 22, color: colors.textSecondary }}>Multimodal Reasoning</div>
+            <div style={{ fontSize: 28, fontWeight: 600, color: colors.primary, letterSpacing: 2 }}>ORCHESTRATOR</div>
+            <div style={{ fontSize: 42, fontWeight: 800, color: colors.text }}>Gemini Pro</div>
+            <div style={{ fontSize: 28, color: colors.textSecondary }}>Multimodal Reasoning</div>
           </div>
 
           {/* Agent nodes + arrows */}
@@ -120,17 +120,17 @@ export const AgentArchSlide: React.FC = () => {
                   }}>
                     {/* Row 1: badges + name */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", backgroundColor: agent.color, padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>{agent.step}</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, color: agent.color, letterSpacing: 1, backgroundColor: `${agent.color}15`, padding: "4px 10px", borderRadius: 6, flexShrink: 0 }}>{agent.tag}</div>
-                      <div style={{ fontSize: 24, fontWeight: 700, color: colors.text, whiteSpace: "nowrap" }}>{agent.name}</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: "#fff", backgroundColor: agent.color, padding: "3px 10px", borderRadius: 6, flexShrink: 0 }}>{agent.step}</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: agent.color, letterSpacing: 1, backgroundColor: `${agent.color}15`, padding: "4px 10px", borderRadius: 6, flexShrink: 0 }}>{agent.tag}</div>
+                      <div style={{ fontSize: 30, fontWeight: 700, color: colors.text, whiteSpace: "nowrap" }}>{agent.name}</div>
                     </div>
                     {/* Row 2: IN */}
-                    <div style={{ fontSize: 20, color: colors.textSecondary }}>
+                    <div style={{ fontSize: 26, color: colors.textSecondary }}>
                       <span style={{ color: colors.textMuted, fontWeight: 600 }}>IN: </span>
                       <span style={{ fontWeight: 600 }}>{agent.input}</span>
                     </div>
                     {/* Row 3: OUT */}
-                    <div style={{ fontSize: 20, color: agent.color }}>
+                    <div style={{ fontSize: 26, color: agent.color }}>
                       <span style={{ color: colors.textMuted, fontWeight: 600 }}>OUT: </span>
                       <span style={{ fontWeight: 700 }}>{agent.output}</span>
                     </div>
@@ -153,8 +153,8 @@ export const AgentArchSlide: React.FC = () => {
               padding: "16px 28px",
             }}
           >
-            <div style={{ fontSize: 22, color: colors.accent, fontWeight: 600, letterSpacing: 1 }}>FINAL OUTPUT</div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: colors.text, marginTop: 4 }}>Defect 위치 + Root Cause + Spec 기반 해결방안</div>
+            <div style={{ fontSize: 28, color: colors.accent, fontWeight: 600, letterSpacing: 1 }}>FINAL OUTPUT</div>
+            <div style={{ fontSize: 32, fontWeight: 700, color: colors.text, marginTop: 4 }}>Defect 위치 + Root Cause + Spec 기반 해결방안</div>
           </div>
         </div>
       </div>

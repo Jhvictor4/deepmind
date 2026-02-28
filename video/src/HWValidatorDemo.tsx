@@ -56,52 +56,18 @@ export const HWValidatorDemo: React.FC = () => {
         <RealDataSlide />
       </Sequence>
 
-      {/* 5. Solution (18~23s) */}
-      <Sequence from={540} durationInFrames={150}>
+      {/* 5. Solution (18~24s) */}
+      <Sequence from={540} durationInFrames={180}>
         <SolutionSlide />
       </Sequence>
 
-      {/* 6. Why Gemini (23~27s) */}
-      <Sequence from={690} durationInFrames={120}>
+      {/* 6. Why Gemini (24~28s) */}
+      <Sequence from={720} durationInFrames={120}>
         <WhyGeminiSlide />
       </Sequence>
 
-      {/* 7. Agent Architecture (27~32s) */}
-      <Sequence from={810} durationInFrames={150}>
-        <AgentArchSlide />
-      </Sequence>
-
-      {/* ================================================== */}
-      {/* 8. Agent Demo x4 (32~47s) — 15초, Demo 50% 핵심   */}
-      {/* ================================================== */}
-      <Sequence from={960} durationInFrames={112}>
-        <AgentDemoSlide agentIndex={0} />
-      </Sequence>
-
-      <Sequence from={1072} durationInFrames={113}>
-        <AgentDemoSlide agentIndex={1} />
-      </Sequence>
-
-      <Sequence from={1185} durationInFrames={112}>
-        <AgentDemoSlide agentIndex={2} />
-      </Sequence>
-
-      <Sequence from={1297} durationInFrames={113}>
-        <AgentDemoSlide agentIndex={3} />
-      </Sequence>
-
-      {/* 9. Final Result (47~52s) */}
-      <Sequence from={1410} durationInFrames={150}>
-        <ResultSlide />
-      </Sequence>
-
-      {/* 10. Impact (52~56s) */}
-      <Sequence from={1560} durationInFrames={120}>
-        <ImpactSlide />
-      </Sequence>
-
-      {/* 11. Outro (56~60s) */}
-      <Sequence from={1680} durationInFrames={120}>
+      {/* 7. Outro (28~32s) */}
+      <Sequence from={840} durationInFrames={120}>
         <OutroSlide />
       </Sequence>
     </AbsoluteFill>

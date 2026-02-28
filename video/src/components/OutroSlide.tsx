@@ -52,7 +52,7 @@ export const OutroSlide: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 48,
+            fontSize: 54,
             fontWeight: 900,
             color: "#fff",
           }}
@@ -63,7 +63,7 @@ export const OutroSlide: React.FC = () => {
         {/* Title */}
         <h1
           style={{
-            fontSize: 80,
+            fontSize: 86,
             fontWeight: 800,
             margin: 0,
             textAlign: "center",
@@ -79,7 +79,7 @@ export const OutroSlide: React.FC = () => {
         <p
           style={{
             opacity: subtitleOpacity,
-            fontSize: 38,
+            fontSize: 44,
             fontWeight: 700,
             color: colors.text,
             textAlign: "center",
@@ -110,7 +110,7 @@ export const OutroSlide: React.FC = () => {
                   padding: "10px 28px",
                   borderRadius: 100,
                   border: `1.5px solid ${colors.primary}40`,
-                  fontSize: 24,
+                  fontSize: 30,
                   fontWeight: 500,
                   color: colors.primary,
                 }}
@@ -129,7 +129,7 @@ export const OutroSlide: React.FC = () => {
             display: "flex",
             alignItems: "center",
             gap: 14,
-            fontSize: 26,
+            fontSize: 32,
             color: colors.textMuted,
           }}
         >
@@ -137,7 +137,7 @@ export const OutroSlide: React.FC = () => {
           <span
             style={{
               fontWeight: 700,
-              fontSize: 30,
+              fontSize: 36,
               background: `linear-gradient(135deg, ${colors.gemini1}, ${colors.gemini2}, ${colors.gemini3}, ${colors.gemini4})`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",

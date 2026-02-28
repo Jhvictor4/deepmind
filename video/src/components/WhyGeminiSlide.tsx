@@ -31,16 +31,20 @@ const competitors = [
 
 const advantages = [
   {
-    title: "Gemini 네이티브 멀티모달",
-    desc: "에러 로그 + PDF 스펙 + CAD + 실물 사진 → 하나의 모델이 동시 이해",
+    title: "멀티모달 통합 분석",
+    desc: "로그, 스펙 PDF, 회로도, 실물 사진을 한번에 읽고 판단",
   },
   {
-    title: "4-Agent 교차 검증",
-    desc: "각 Agent가 좁은 스코프에 특화 → 단일 LLM의 한계를 구조로 극복",
+    title: "4개 전문 Agent 협업",
+    desc: "역할별 Agent가 나눠서 분석하고 서로 검증",
   },
   {
-    title: "현장 전문성",
-    desc: "국내 DRAM 제조업체 검증 엔지니어 + POSTECH 컴퓨터공학과 대학원생",
+    title: "현장 엔지니어가 설계",
+    desc: "실제 DRAM 검증 경험을 바탕으로 만든 워크플로우",
+  },
+  {
+    title: "RAG로 스펙 자동 검색",
+    desc: "수천 페이지에서 필요한 규격만 찾아서 적용",
   },
 ];
 
@@ -76,7 +80,7 @@ export const WhyGeminiSlide: React.FC = () => {
         {/* Section tag */}
         <div
           style={{
-            fontSize: 18,
+            fontSize: 36,
             fontWeight: 700,
             letterSpacing: 4,
             color: colors.textMuted,
@@ -107,7 +111,7 @@ export const WhyGeminiSlide: React.FC = () => {
           >
             <div
               style={{
-                fontSize: 16,
+                fontSize: 34,
                 fontWeight: 600,
                 color: colors.textMuted,
                 letterSpacing: 2,
@@ -139,7 +143,7 @@ export const WhyGeminiSlide: React.FC = () => {
                 >
                   <div
                     style={{
-                      fontSize: 26,
+                      fontSize: 44,
                       fontWeight: 900,
                       color: colors.accent,
                       flexShrink: 0,
@@ -160,7 +164,7 @@ export const WhyGeminiSlide: React.FC = () => {
                     >
                       <span
                         style={{
-                          fontSize: 20,
+                          fontSize: 38,
                           fontWeight: 700,
                           color: comp.color,
                           letterSpacing: 1,
@@ -170,7 +174,7 @@ export const WhyGeminiSlide: React.FC = () => {
                       </span>
                       <span
                         style={{
-                          fontSize: 17,
+                          fontSize: 35,
                           color: colors.textMuted,
                           fontWeight: 400,
                         }}
@@ -180,7 +184,7 @@ export const WhyGeminiSlide: React.FC = () => {
                     </div>
                     <div
                       style={{
-                        fontSize: 19,
+                        fontSize: 37,
                         color: colors.textSecondary,
                         fontWeight: 400,
                         lineHeight: 1.4,
@@ -205,7 +209,7 @@ export const WhyGeminiSlide: React.FC = () => {
           >
             <div
               style={{
-                fontSize: 40,
+                fontSize: 58,
                 color: colors.primary,
                 opacity: interpolate(frame, [30, 40], [0, 1], {
                   extrapolateRight: "clamp",
@@ -228,7 +232,7 @@ export const WhyGeminiSlide: React.FC = () => {
           >
             <div
               style={{
-                fontSize: 16,
+                fontSize: 34,
                 fontWeight: 600,
                 color: colors.primary,
                 letterSpacing: 2,
@@ -260,7 +264,7 @@ export const WhyGeminiSlide: React.FC = () => {
                 >
                   <div
                     style={{
-                      fontSize: 26,
+                      fontSize: 44,
                       fontWeight: 900,
                       color: colors.primary,
                       flexShrink: 0,
@@ -273,7 +277,7 @@ export const WhyGeminiSlide: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
-                        fontSize: 22,
+                        fontSize: 40,
                         fontWeight: 700,
                         color: colors.text,
                         marginBottom: 4,
@@ -283,7 +287,7 @@ export const WhyGeminiSlide: React.FC = () => {
                     </div>
                     <div
                       style={{
-                        fontSize: 18,
+                        fontSize: 36,
                         color: colors.textSecondary,
                         fontWeight: 400,
                         lineHeight: 1.4,

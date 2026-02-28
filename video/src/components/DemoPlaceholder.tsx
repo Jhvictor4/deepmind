@@ -56,21 +56,21 @@ export const DemoPlaceholder: React.FC = () => {
             <polygon points="38,25 38,75 78,50" fill={colors.primary} opacity={0.6} />
           </svg>
 
-          <div style={{ fontSize: 48, fontWeight: 800, color: colors.text, textAlign: "center" }}>
+          <div style={{ fontSize: 54, fontWeight: 800, color: colors.text, textAlign: "center" }}>
             데모 비디오 삽입 예정
           </div>
 
-          <div style={{ fontSize: 28, color: colors.textSecondary, textAlign: "center", lineHeight: 1.6, maxWidth: 800 }}>
+          <div style={{ fontSize: 34, color: colors.textSecondary, textAlign: "center", lineHeight: 1.6, maxWidth: 800 }}>
             실제 UI에서 4개 파일을 드래그 앤 드롭하고
             <br />
             Agent가 순차적으로 분석하여 결과가 나오는 과정
           </div>
 
-          <div style={{ fontSize: 24, color: colors.textMuted, textAlign: "center" }}>
+          <div style={{ fontSize: 30, color: colors.textMuted, textAlign: "center" }}>
             예상 소요: Input Upload (3s) → Agent Processing (7s) → Result (5s)
           </div>
 
-          <div style={{ fontSize: 32, color: colors.primary, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{ fontSize: 38, color: colors.primary, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
             [ DEMO VIDEO — 15s ]{dots}
           </div>
         </div>

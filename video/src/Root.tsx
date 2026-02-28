@@ -7,7 +7,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="HWValidatorDemo"
         component={HWValidatorDemo}
-        durationInFrames={30 * 60}
+        durationInFrames={960}
         fps={30}
         width={1920}
         height={1080}
